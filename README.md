@@ -26,7 +26,6 @@ All nodes in your Docker Swarm cluster must be properly configured to support th
 ### 3. Intel Hardware Acceleration Setup
 -   Follow the official Jellyfin documentation to enable Intel QSV, fix kernel issues, and set up Low Power (LP) mode.
     -   **Verification**: [Jellyfin Intel Hardware Acceleration](https://jellyfin.org/docs/general/administration/hardware-acceleration/intel/)
-    -   **Known Issues**: [Jellyfin Hardware Acceleration Known Issues](https://jellyfin.org/docs/general/administration/hardware-acceleration/known-issues/)
     -   **Low Power Mode**: [Jellyfin Intel LP Mode Setup](https://jellyfin.org/docs/general/administration/hardware-acceleration/intel/#lp-mode-hardware-support)
 
 -   Install the Intel OpenCL driver:
@@ -89,7 +88,7 @@ wget https://raw.githubusercontent.com/gitdeath/jellyfin-rffmpeg-swarm/main/dock
 
 ### 2. Generate SSH Keys
 
-In the same directory, generate the required SSH key pair. Then, create Docker secrets from these files. This stores the keys securely in the Swarm cluster, making them available to any node.
+Generate the required SSH key pair. Then, create Docker secrets from these files. This stores the keys securely in the Swarm cluster, making them available to any node.
 
 ```bash
 ssh-keygen -t rsa -b 4096 -f ./rffmpeg_id_rsa -q -N ""
@@ -97,6 +96,12 @@ ssh-keygen -t rsa -b 4096 -f ./rffmpeg_id_rsa -q -N ""
 # Create the secrets in Docker Swarm
 docker secret create jellyfin_rffmpeg_id_rsa ./rffmpeg_id_rsa
 docker secret create jellyfin_rffmpeg_id_rsa_pub ./rffmpeg_id_rsa.pub
+```
+
+For better security, you should delete the private key file (`rffmpeg_id_rsa`) from the host system after creating the Docker secret. The key will be securely managed by Docker Swarm.
+
+```bash
+rm ./rffmpeg_id_rsa ./rffmpeg_id_rsa.pub
 ```
 
 ### 3. Deploy the Stack
