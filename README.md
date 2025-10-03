@@ -142,11 +142,13 @@ This project builds on and uses work from the following upstream projects — th
 
 - Jellyfin — the upstream open-source media server which this project integrates with and extends for distributed transcoding. See: https://github.com/jellyfin/jellyfin
 
+- device-mapping-manager / allfro — the device mapping manager allows GPU devices to be mapped correctly within the Swarm. See: https://github.com/allfro/device-mapping-manager
+
 The `jellyfin-server/entrypoint.sh` file includes an attribution header pointing to the NFS server project from which parts of the script were adapted. This repository is independently developed and maintained by the project owner and is not affiliated with the original authors. Please refer to the linked upstream repositories for their full documentation, source, and license terms.
 
 ## Embedded NFS (required for /transcodes and /cache) — important details
 
-This project intentionally uses an embedded NFS server running inside the `jellyfin-server` container to export the `/transcodes` and `/cache` directories to transcode workers. These two exports are required because workers write temporary files and final transcodes into those paths; the Jellyfin server later serves them. While your media library (`media`) may come from an external NFS server, `/transcodes` and `/cache` must be exported by the coordinator so the server and workers share the same writable locations.
+This project uses an embedded NFS server within the `jellyfin-server` container to share the `/transcodes` and `/cache` directories with the transcode workers. This is necessary because workers write temporary and final transcodes to these paths, which the Jellyfin server then serves. While your media library may reside on an external NFS server, `/transcodes` and `/cache` must be exported by the `jellyfin-server` to ensure that both the server and workers share the same writable locations for seamless media delivery.
 
 Key implications and requirements:
 
@@ -159,8 +161,3 @@ Troubleshooting tips
 - If workers fail to mount `/transcodes` or `/cache`, check worker logs for `mount` errors and confirm `cap_add: SYS_ADMIN` is present in `docker-compose.yml`.
 - Verify the server built the exports by inspecting `/etc/exports` inside the `jellyfin-server` container and checking its logs for the NFS startup messages.
 - From a worker container, run `mount | grep transcodes`, `df -h`, and `ping jellyfin-server` to verify mounts and name resolution.
-- If overlay networking prevents stable NFS mounts in your environment, consider these options:
-    - Run the `jellyfin-server` container with host networking (not ideal for Swarm) so NFS is reachable via the manager host IP.
-    - Use an NFS server on a dedicated host for the `media` share but keep `/transcodes` and `/cache` exported by the coordinator node's host (advanced).
-
-
