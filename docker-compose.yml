@@ -63,6 +63,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2 # Start with 2 workers, can be scaled up or down
+      max_replicas_per_node: 1 # Restrict to a single worker replica per node. Each worker can process multiple simultaneous ffmpeg streams, so running more than one worker on a single node is unnecessary.
 
 networks:
   jellyfin-net:
