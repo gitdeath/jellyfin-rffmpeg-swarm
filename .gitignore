@@ -1,0 +1,4 @@
+.vscode/extensions.json
+# Ignore local VS Code workspace settings file
+.vscode/settings.json
+.vscode/launch.json
