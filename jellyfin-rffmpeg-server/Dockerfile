@@ -58,6 +58,8 @@ RUN apt-get -y update --fix-missing && \
     cp /tmp/comchap_src/comchap /usr/local/bin/ && \
     cp /tmp/comchap_src/comcut /usr/local/bin/ && \
     chmod +x /usr/local/bin/comchap /usr/local/bin/comcut && \
+    # Create the temporary directory needed for the build process, as defined by ENV TMPDIR.
+    mkdir -p /cache/temp && \
     # Build and install comskip from source for maximum compatibility.
     git clone https://github.com/erikkaashoek/Comskip.git /tmp/comskip_src && \
     cd /tmp/comskip_src && \
