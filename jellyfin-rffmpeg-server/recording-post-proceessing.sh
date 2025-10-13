@@ -4,7 +4,7 @@
 DATESTAMP=$(date +'%Y-%m-%d')
 
 # Create a log file for the current date. All logs from the same day will be appended.
-LOG_FILE="/config/logs/post-processing_${DATESTAMP}.log"
+LOG_FILE="/config/log/post-processing_${DATESTAMP}.log"
 INPUT_FILE="$1"
 COMMAND="$2" # The second argument from Jellyfin, e.g., "comcut" or "comchap"
 COMSKIP_INI="/etc/comskip.ini" # Define the path to your system ini file

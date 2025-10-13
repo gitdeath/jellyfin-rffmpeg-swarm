@@ -3,8 +3,8 @@ version: '3.8'
 services:
   # The main Jellyfin server, which also acts as the rffmpeg orchestrator and NFS server
   jellyfin-server:
-    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-server:latest
-    hostname: jellyfin-server
+    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-server:dev
+    hostname: jellyfin-server-dev
     cap_add:
       - SYS_ADMIN
     environment:
@@ -15,12 +15,12 @@ services:
       - NFS_EXPORT_0=/transcodes *(rw,sync,no_subtree_check,no_root_squash,insecure)
       - NFS_EXPORT_1=/cache *(rw,sync,no_subtree_check,no_root_squash,insecure)
     ports:
-      - "8096:8096" # Jellyfin Web UI
+      - "8097:8096" # Jellyfin Dev Web UI on a different port
     volumes:
       # Named volumes using an external NFS server for persistent data.
       # These are defined in the 'volumes:' section at the bottom of this file.
-      - jellyfin_config:/config
-      - livetv:/livetv
+      - jellyfin_config_dev:/config
+      - livetv_dev:/livetv
       - media:/media:ro
       # Host-path mounts for the directories this container will export via its own NFS server.
       # Ensure these directories exist on the node where this container runs.
@@ -31,9 +31,9 @@ services:
     networks:
       - jellyfin-net
     secrets:
-      - source: jellyfin_rffmpeg_id_rsa
+      - source: jellyfin_rffmpeg_id_rsa_dev
         target: rffmpeg_id_rsa
-      - source: jellyfin_rffmpeg_id_rsa_pub
+      - source: jellyfin_rffmpeg_id_rsa_pub_dev
         target: rffmpeg_id_rsa_pub
     deploy:
       mode: replicated
@@ -41,8 +41,8 @@ services:
 
   # The rffmpeg transcode worker, scalable
   transcode-worker:
-    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-worker:latest
-    hostname: "jellyfin-transcode-{{.Task.Slot}}"
+    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-worker:dev
+    hostname: "jellyfin-transcode-dev-{{.Task.Slot}}"
     cap_add:
       - SYS_ADMIN
     # Required so the worker container can run `mount -a` to mount the NFS exports
@@ -51,50 +51,46 @@ services:
       # Named volumes using an external NFS server, shared with the jellyfin-server.
       # The /transcodes and /cache directories are mounted internally by the container's
       # entrypoint script using the fstab defined in its Dockerfile.
-      - jellyfin_config:/config
+      - jellyfin_config_dev:/config
       - media:/media:ro
-      - livetv:/livetv
+      - livetv_dev:/livetv
       # Pass through GPU for hardware acceleration (optional)
       - /dev/dri:/dev/dri
     networks:
       - jellyfin-net
     secrets:
-      - source: jellyfin_rffmpeg_id_rsa_pub
+      - source: jellyfin_rffmpeg_id_rsa_pub_dev
         target: rffmpeg_id_rsa_pub
     deploy:
       mode: replicated
-      replicas: 2 # Start with 2 workers, can be scaled up or down
-      max_replicas_per_node: 1 # Restrict to a single worker replica per node. Each worker can process multiple simultaneous ffmpeg streams, so running more than one worker on a single node is unnecessary.
+      replicas: 1 # Start with 1 worker for dev
+      max_replicas_per_node: 1
 
 networks:
   jellyfin-net:
     driver: overlay
 
-# This section defines Docker-managed volumes.
 volumes:
-  # These volumes use the built-in 'local' driver with NFS options to mount
-  # shares from an external NFS server.
-  # IMPORTANT: You must replace 'YOUR_NFS_SERVER_IP' and the device paths.
-  jellyfin_config:
+  # IMPORTANT: These volumes point to separate dev paths on your NFS server.
+  jellyfin_config_dev:
     driver_opts:
       type: "nfs"
       o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,rw"
-      device: ":/path/to/your/jellyfin/config"
+      device: ":/path/to/your/jellyfin/config_dev"
+  livetv_dev:
+    driver_opts:
+      type: "nfs"
+      o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,rw"
+      device: ":/path/to/your/livetv/recordings_dev"
+  # The media volume can be shared with production
   media:
     driver_opts:
       type: "nfs"
       o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,ro"
       device: ":/path/to/your/media"
-  livetv:
-    driver_opts:
-      type: "nfs"
-      o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,rw"
-      device: ":/path/to/your/livetv/recordings"
 
-
-# This section defines Docker secrets for securely managing the SSH keys.
 secrets:
-  jellyfin_rffmpeg_id_rsa:
+  jellyfin_rffmpeg_id_rsa_dev:
     external: true
-  jellyfin_rffmpeg_id_rsa_pub:
+  jellyfin_rffmpeg_id_rsa_pub_dev:
     external: true

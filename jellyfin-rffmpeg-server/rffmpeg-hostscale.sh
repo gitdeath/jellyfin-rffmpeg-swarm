@@ -27,10 +27,19 @@ remove_hostname() {
 max_consecutive_failures=2
 consecutive_failures=0
 
+# Determine the worker prefix based on the server's own hostname.
+# If the server hostname ends in "-dev", it will look for workers with a "-dev-" prefix.
+if [[ "$(hostname)" == *"-dev" ]]; then
+    WORKER_PREFIX="jellyfin-transcode-dev-"
+    echo "INFO: Server hostname indicates DEV mode. Using worker prefix: $WORKER_PREFIX"
+else
+    WORKER_PREFIX="jellyfin-transcode-"
+fi
+
 # Start loop without setting a maximum value
 i=1
 while true; do
-    hostname="jellyfin-transcode-$i"
+    hostname="${WORKER_PREFIX}$i"
 
     # Check if host is online
     if is_host_online "$hostname"; then
