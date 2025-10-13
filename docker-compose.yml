@@ -21,6 +21,7 @@ services:
       # These are defined in the 'volumes:' section at the bottom of this file.
       - jellyfin_config:/config
       - jellyfin_rffmpeg:/rffmpeg
+      - livetv:/livetv
       - media:/media:ro
       # Host-path mounts for the directories this container will export via its own NFS server.
       # Ensure these directories exist on the node where this container runs.
@@ -53,6 +54,7 @@ services:
       # entrypoint script using the fstab defined in its Dockerfile.
       - jellyfin_config:/config
       - media:/media:ro
+      - livetv:/livetv
       # Pass through GPU for hardware acceleration (optional)
       - /dev/dri:/dev/dri
     networks:
@@ -89,6 +91,11 @@ volumes:
       type: "nfs"
       o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,ro"
       device: ":/path/to/your/media"
+  livetv:
+    driver_opts:
+      type: "nfs"
+      o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,rw"
+      device: ":/path/to/your/livetv/recordings"
 
 
 # This section defines Docker secrets for securely managing the SSH keys.

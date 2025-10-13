@@ -6,7 +6,8 @@ ARG RFFMPEG_URL=https://raw.githubusercontent.com/joshuaboniface/rffmpeg/master/
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8  
 ENV LANGUAGE=en_US:en  
-ENV LC_ALL=en_US.UTF-8 
+ENV LC_ALL=en_US.UTF-8
+ENV TMPDIR=/cache/temp 
 
 # Install dependencies, configure rffmpeg.yml, set locale, and clean up in a single layer.
 # wget is installed for the download and purged in the same layer to keep the image small.
@@ -17,6 +18,8 @@ RUN apt-get -y update --fix-missing && \
         python3-click \
         python3-yaml \
         wget \
+        comskip \
+        git \
         nfs-common \
         nfs-kernel-server \
         libcap2-bin \
@@ -40,9 +43,17 @@ RUN apt-get -y update --fix-missing && \
     sed -i 's;#user: jellyfin;user: transcodessh;' /tmp/rffmpeg/rffmpeg.yml && \
     sed -i 's;#args:;args:;' /tmp/rffmpeg/rffmpeg.yml && \
     sed -i 's;#    - "-i";    - "-i";' /tmp/rffmpeg/rffmpeg.yml && \
-    sed -i 's;#    - "/var/lib/jellyfin/id_rsa";    - "/run/rffmpeg/.ssh/id_rsa";' /tmp/rffmpeg/rffmpeg.yml && \
-    # Clean up apt cache and remove wget
-    apt-get purge -y wget && \
+    sed -i 's;#    - "/var/lib/jellyfin/id_rsa";    - "/run/rffmpeg/.ssh/id_rsa";' /tmp/rffmpeg/rffmpeg.yml && \    
+    # Install comchap/comcut
+    git clone https://github.com/BrettSheleski/comchap.git /tmp/comchap && \
+    cp /tmp/comchap/comchap /usr/local/bin/ && \
+    cp /tmp/comchap/comcut /usr/local/bin/ && \
+    chmod +x /usr/local/bin/comchap /usr/local/bin/comcut && \
+    # Create default comskip.ini
+    echo -e "; Minimal default comskip config\nedl_out=1\noutput_edl=1\nverbose=0\nthread_count=0" > /etc/comskip.ini && \
+    # Clean up build dependencies and temporary files
+    rm -rf /tmp/comchap && \
+    apt-get purge -y wget git && \
     apt-get autoremove -y --purge && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -82,7 +93,8 @@ RUN \
     
 COPY --chown=transcodessh:users rffmpeg-hostscale.sh /rffmpeg-hostscale.sh
 COPY --chown=root:root entrypoint.sh /entrypoint.sh
-RUN chmod +x /rffmpeg-hostscale.sh /entrypoint.sh && \
+COPY --chown=root:root recording-post-proceessing.sh /recording-post-processing.sh
+RUN chmod +x /rffmpeg-hostscale.sh /entrypoint.sh /recording-post-processing.sh && \
     (crontab -l 2>/dev/null; echo "*/15 * * * * /rffmpeg-hostscale.sh"; echo "0 0 * * * /usr/local/bin/rffmpeg clear") | crontab -
 
 ENTRYPOINT ["/entrypoint.sh"]

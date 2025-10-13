@@ -1,15 +1,15 @@
 # Jellyfin RFFMPEG Swarm
 
-This project provides a scalable, containerized Jellyfin setup using `rffmpeg` to distribute transcoding jobs across multiple worker nodes in a Docker Swarm cluster.
+This project creates a scalable, distributed Jellyfin media server using Docker Swarm. It solves the common challenge of CPU-intensive video transcoding by offloading the work from the main Jellyfin server to a cluster of dedicated worker nodes.
 
-## Architecture
+## Overview
 
-The stack consists of two core services managed by Docker Compose:
+The architecture is composed of two primary services:
 
 -   **`jellyfin-server`**: The main Jellyfin instance. It does not perform transcodes itself but instead delegates them to available workers via SSH using `rffmpeg`. This service also runs an integrated **NFS server** to provide shared storage for the `/transcodes` and `/cache` directories, ensuring all nodes have access to the same media files.
--   **`transcode-worker`**: A scalable service that receives and executes transcoding jobs from the server. You can scale the number of workers up or down based on demand.
+-   **`transcode-worker`**: The workhorses of the cluster. These are lightweight, scalable containers that listen for transcoding jobs from the server via SSH. You can add or remove workers on-the-fly to match your expected transcoding load.
 
-All communication, including SSH for transcoding and NFS for file sharing, happens over a dedicated Docker overlay network.
+All services communicate over a secure Docker overlay network.
 
 ## Host System Requirements
 
@@ -130,9 +130,30 @@ To add more transcoding capacity, simply scale the `transcode-worker` service:
 # Scale to 5 workers
 docker service scale jellyfin_transcode-worker=5
 ```
+  
+ ## DVR and Live TV Features
  
-## Credits
-
+ This project is pre-configured to enhance Jellyfin's DVR functionality with automated commercial processing.
+ 
+ ### Recording Path
+ 
+ The default recording path is automatically set to `/livetv`. You **must** configure the `livetv` volume in `docker-compose.yml` to point to a persistent storage location for your DVR recordings.
+ 
+ ### Automated Commercial Processing
+ 
+ The `jellyfin-server` is configured to automatically run a post-processing script on recordings. This script uses `comskip` to detect commercials and has two modes:
+ 
+ -   **`comchap` (Default)**: This non-destructive mode adds chapter markers to the video file, allowing you to skip commercial breaks easily.
+ -   **`comcut` (Optional)**: This destructive mode creates a new version of the recording with commercials physically removed, then replaces the original file.
+ 
+ You can change this behavior from the Jellyfin dashboard by navigating to **Dashboard -> Live TV -> DVR Settings** and editing the **Post-processor command line arguments** field.
+ -   To enable commercial cutting, change the value to: `"{path}" comcut`
+ -   To use the default chapter mode, use: `"{path}" comchap`
+ 
+ Logs for all post-processing jobs are stored in `/config/logs/post-processing_YYYY-MM-DD.log`.
+ 
+ ## Credits
+ 
 This project builds on and uses work from the following upstream projects — thank you to the original authors:
 
 
@@ -143,6 +164,10 @@ This project builds on and uses work from the following upstream projects — th
 - Jellyfin — the upstream open-source media server which this project integrates with and extends for distributed transcoding. See: https://github.com/jellyfin/jellyfin
 
 - device-mapping-manager / allfro — the device mapping manager allows GPU devices to be mapped correctly within the Swarm. See: https://github.com/allfro/device-mapping-manager
+
+- Comskip (Erik Kaashoek) — The core commercial detection engine used by the post-processing scripts. See: https://github.com/erikkaashoek/Comskip
+
+- comchap (Brett Sheleski) — The `comchap` and `comcut` scripts are used for DVR post-processing to handle commercials. See: https://github.com/BrettSheleski/comchap
 
 The `jellyfin-server/entrypoint.sh` file includes an attribution header pointing to the NFS server project from which parts of the script were adapted. This repository is independently developed and maintained by the project owner and is not affiliated with the original authors. Please refer to the linked upstream repositories for their full documentation, source, and license terms.
 

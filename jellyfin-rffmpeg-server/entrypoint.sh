@@ -508,7 +508,31 @@ else
 fi
 #------
 
-
+# Create default Live TV configuration if it doesn't exist.
+# This is done in the entrypoint so it can write to the /config volume after it's mounted.
+# It checks for the file's existence to avoid overwriting user changes on subsequent runs.
+LIVETV_CONFIG_DIR="/config/config"
+LIVETV_CONFIG_FILE="$LIVETV_CONFIG_DIR/livetv.xml"
+if [ ! -f "$LIVETV_CONFIG_FILE" ]; then
+    echo "INFO: Live TV config not found. Creating default at $LIVETV_CONFIG_FILE"
+    mkdir -p "$LIVETV_CONFIG_DIR"
+    cat > "$LIVETV_CONFIG_FILE" << EOF
+<LiveTvOptions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <RecordingPath>/livetv</RecordingPath>
+  <EnableRecordingSubfolders>false</EnableRecordingSubfolders>
+  <EnableOriginalAudioWithEncodedRecordings>false</EnableOriginalAudioWithEncodedRecordings>
+  <MediaLocationsCreated>
+    <string>/livetv</string>
+  </MediaLocationsCreated>
+  <RecordingPostProcessor>/recording-post-processing.sh</RecordingPostProcessor>
+  <RecordingPostProcessorArguments>"{path}"</RecordingPostProcessorArguments>
+</LiveTvOptions>
+EOF
+    # chown to the jellyfin user if it's not root, to ensure it has write permissions.
+    # chown -R jellyfin:jellyfin "$LIVETV_CONFIG_DIR"
+else
+    echo "INFO: Existing Live TV config found. Skipping creation."
+fi
 
 # Start Jellyfin
 /jellyfin/jellyfin --datadir /config --cachedir /cache --ffmpeg /usr/local/bin/ffmpeg &
