@@ -29,6 +29,7 @@ RUN apt-get -y update --fix-missing && \
         libargtable2-dev \
         libavutil-dev \
         libavcodec-dev \
+        libswscale-dev \
         nfs-common \
         nfs-kernel-server \
         libcap2-bin \
@@ -71,7 +72,7 @@ RUN apt-get -y update --fix-missing && \
     echo -e "; Minimal default comskip config\nedl_out=1\noutput_edl=1\nverbose=0\nthread_count=0" > /etc/comskip.ini && \
 # Removes build-time dependencies (like git) and clears apt caches to reduce image size.
     rm -rf /tmp/comchap_src /tmp/comskip_src && \
-    apt-get purge -y --auto-remove wget git build-essential pkg-config autoconf automake libtool libavformat-dev libargtable2-dev libavutil-dev libavcodec-dev && \
+    apt-get purge -y --auto-remove wget git build-essential pkg-config autoconf automake libtool libavformat-dev libargtable2-dev libavutil-dev libavcodec-dev libswscale-dev && \
     apt-get autoremove -y --purge && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
