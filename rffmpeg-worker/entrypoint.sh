@@ -33,6 +33,20 @@ else
     log "Warning: /dev/dri/renderD128 not found. Skipping GPU group setup."
 fi
 
+# Determine the NFS server hostname based on the worker's own hostname.
+# If the worker's hostname contains "-dev", it will connect to the dev server.
+if [[ "$(hostname)" == *"-dev"* ]]; then
+    NFS_SERVER_HOSTNAME="jellyfin-server-dev"
+    log "INFO: Worker hostname indicates DEV mode. Using NFS server: $NFS_SERVER_HOSTNAME"
+else
+    NFS_SERVER_HOSTNAME="jellyfin-server"
+fi
+
+# Create /etc/fstab dynamically to point to the correct NFS server.
+log "INFO: Creating /etc/fstab to mount from $NFS_SERVER_HOSTNAME"
+echo "$NFS_SERVER_HOSTNAME:/transcodes /transcodes nfs rw,nolock,actimeo=1 0 0" > /etc/fstab
+echo "$NFS_SERVER_HOSTNAME:/cache /cache nfs rw,nolock,actimeo=1 0 0" >> /etc/fstab
+
 # Attempt to mount file systems from /etc/fstab
 mount -a
 log "Success: File systems mounted successfully."

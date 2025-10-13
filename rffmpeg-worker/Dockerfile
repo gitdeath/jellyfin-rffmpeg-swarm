@@ -26,11 +26,7 @@ ENV LC_ALL=en_US.UTF-8
 # Create directories, set permissions, and define NFS mounts for the entrypoint.
 RUN (getent group users || groupadd -g 100 users) && \
     mkdir -p /transcodes /cache /config && \
-    chgrp users /transcodes /cache /config && \
-    { \
-      echo 'jellyfin-server:/transcodes /transcodes nfs rw,nolock,actimeo=1 0 0'; \
-      echo 'jellyfin-server:/cache /cache nfs rw,nolock,actimeo=1 0 0'; \
-    } > /etc/fstab
+    chgrp users /transcodes /cache /config
 
 # Create the transcodessh user for receiving jobs.
 RUN useradd -u 7001 -g users -m transcodessh && \
