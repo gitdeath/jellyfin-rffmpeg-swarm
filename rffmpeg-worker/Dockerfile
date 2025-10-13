@@ -36,8 +36,6 @@ RUN useradd -u 7001 -g users -m transcodessh && \
 # Set a global umask to ensure group-writable files.
 RUN echo 'umask 002' >> /etc/profile
 
-HEALTHCHECK --interval=5s --timeout=20s CMD ping -c 1 jellyfin-server
-
 EXPOSE 22
 
 COPY entrypoint.sh /entrypoint.sh
