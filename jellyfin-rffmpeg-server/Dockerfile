@@ -9,8 +9,8 @@ ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 ENV TMPDIR=/cache/temp 
 
-# Install dependencies, configure rffmpeg.yml, set locale, and clean up in a single layer.
-# wget is installed for the download and purged in the same layer to keep the image small.
+# Installs all system packages, configures rffmpeg, and sets up DVR tools in a single layer.
+# This approach is used to minimize the final image size.
 RUN apt-get -y update --fix-missing && \
     apt-get install -y --no-install-recommends \
         openssh-client \
@@ -18,8 +18,17 @@ RUN apt-get -y update --fix-missing && \
         python3-click \
         python3-yaml \
         wget \
-        comskip \
         git \
+        # Comskip build dependencies
+        build-essential \
+        pkg-config \
+        autoconf \
+        automake \
+        libtool \
+        libavformat-dev \
+        libargtable2-dev \
+        libavutil-dev \
+        libavcodec-dev \
         nfs-common \
         nfs-kernel-server \
         libcap2-bin \
@@ -30,7 +39,7 @@ RUN apt-get -y update --fix-missing && \
         locales \
     && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen && \
-    # Download and modify rffmpeg.yml, preserving the original file's structure
+    # Download the rffmpeg configuration template and customize it for this project's paths and user.
     mkdir -p /tmp/rffmpeg && \
     wget https://raw.githubusercontent.com/joshuaboniface/rffmpeg/master/rffmpeg.yml.sample -O /tmp/rffmpeg/rffmpeg.yml && \
     sed -i 's;#logfile: "/var/log/jellyfin/rffmpeg.log";logfile: "/config/log/rffmpeg.log";' /tmp/rffmpeg/rffmpeg.yml && \
@@ -44,53 +53,57 @@ RUN apt-get -y update --fix-missing && \
     sed -i 's;#args:;args:;' /tmp/rffmpeg/rffmpeg.yml && \
     sed -i 's;#    - "-i";    - "-i";' /tmp/rffmpeg/rffmpeg.yml && \
     sed -i 's;#    - "/var/lib/jellyfin/id_rsa";    - "/run/rffmpeg/.ssh/id_rsa";' /tmp/rffmpeg/rffmpeg.yml && \    
-    # Install comchap/comcut
-    git clone https://github.com/BrettSheleski/comchap.git /tmp/comchap && \
-    cp /tmp/comchap/comchap /usr/local/bin/ && \
-    cp /tmp/comchap/comcut /usr/local/bin/ && \
+    # Install comchap/comcut scripts for DVR commercial processing.
+    git clone https://github.com/BrettSheleski/comchap.git /tmp/comchap_src && \
+    cp /tmp/comchap_src/comchap /usr/local/bin/ && \
+    cp /tmp/comchap_src/comcut /usr/local/bin/ && \
     chmod +x /usr/local/bin/comchap /usr/local/bin/comcut && \
-    # Create default comskip.ini
+    # Build and install comskip from source for maximum compatibility.
+    git clone https://github.com/erikkaashoek/Comskip.git /tmp/comskip_src && \
+    cd /tmp/comskip_src && \
+    ./autogen.sh && \
+    ./configure && \
+    make && \
+    make install && \
+    cd / && \
     echo -e "; Minimal default comskip config\nedl_out=1\noutput_edl=1\nverbose=0\nthread_count=0" > /etc/comskip.ini && \
-    # Clean up build dependencies and temporary files
-    rm -rf /tmp/comchap && \
-    apt-get purge -y wget git && \
+# Removes build-time dependencies (like git) and clears apt caches to reduce image size.
+    rm -rf /tmp/comchap_src /tmp/comskip_src && \
+    apt-get purge -y --auto-remove wget git build-essential pkg-config autoconf automake libtool libavformat-dev libargtable2-dev libavutil-dev libavcodec-dev && \
     apt-get autoremove -y --purge && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install rffmpeg using ADD for better caching and create symlinks
+# Downloads the rffmpeg binary. 'ADD' is used here because it can handle URLs and
+# offers better caching for remote files compared to 'RUN wget'.
 ADD ${RFFMPEG_URL} /usr/local/bin/rffmpeg
 RUN chmod +x /usr/local/bin/rffmpeg && \
     ln -s /usr/local/bin/rffmpeg /usr/local/bin/ffmpeg && \
     ln -s /usr/local/bin/rffmpeg /usr/local/bin/ffprobe
 
-# Consolidate user setup, directory creation, and permissions into a single layer.
+# Creates the 'transcodessh' user, sets up required directories, and configures permissions.
+# This ensures the NFS server and SSH daemon have the correct environment to run in.
 RUN \
-    # Ensure 'users' group exists, creating it if necessary.
     (getent group users || groupadd -g 100 users) && \
-    # Create the transcodessh user and add it to necessary groups.
     useradd -u 7001 -g users -m transcodessh && \
     usermod -a -G video,users,root transcodessh && \
-    # Add root to the users group for shared volume access.
     usermod -a -G users root && \
-    # Create required directories for NFS, volumes, and SSH keys.
     mkdir -p /var/lib/nfs/rpc_pipefs /var/lib/nfs/v4recovery && \
     echo "rpc_pipefs  /var/lib/nfs/rpc_pipefs  rpc_pipefs  defaults  0  0" >> /etc/fstab && \
     echo "nfsd        /proc/fs/nfsd            nfsd        defaults  0  0" >> /etc/fstab && \
     mkdir -p /rffmpeg/.ssh /transcodes /cache /cache/temp /config /home/transcodessh/.ssh && \
-    # Set correct ownership and permissions for user home and SSH directories.
     chown -R transcodessh:users /home/transcodessh && \
     chown -R transcodessh:users /rffmpeg/.ssh && \
     chmod 700 /home/transcodessh/.ssh /rffmpeg/.ssh && \
-    # Set group ownership on volume mount points.
     chgrp users /transcodes /cache /cache/temp /config && \
-    # Modify ssh_config in-place to allow non-interactive SSH.
     sed -i \
         -e 's;#   IdentityFile ~/.ssh/id_rsa;   IdentityFile /run/rffmpeg/.ssh/id_rsa;' \
         -e 's;#   UserKnownHostsFile ~/.ssh/known_hosts.d/%k;   UserKnownHostsFile /dev/null ;' \
         -e 's;#   StrictHostKeyChecking ask;    StrictHostKeyChecking no;' \
         /etc/ssh/ssh_config
     
+# Copies the container's operational scripts and sets up a cron job.
+# The cron job periodically runs the host scaling script to discover and manage worker nodes.
 COPY --chown=transcodessh:users rffmpeg-hostscale.sh /rffmpeg-hostscale.sh
 COPY --chown=root:root entrypoint.sh /entrypoint.sh
 COPY --chown=root:root recording-post-proceessing.sh /recording-post-processing.sh
