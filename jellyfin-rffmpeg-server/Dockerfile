@@ -69,7 +69,7 @@ RUN apt-get -y update --fix-missing && \
     make && \
     make install && \
     cd / && \
-    echo -e "; Minimal default comskip config\nedl_out=1\noutput_edl=1\nverbose=0\nthread_count=0" > /etc/comskip.ini && \
+    echo -e "edl_out=1\noutput_edl=1\nverbose=1" > /etc/comskip.ini && \
 # Removes build-time dependencies (like git) and clears apt caches to reduce image size.
     rm -rf /tmp/comchap_src /tmp/comskip_src && \
     apt-get purge -y --auto-remove wget git build-essential pkg-config autoconf automake && \
