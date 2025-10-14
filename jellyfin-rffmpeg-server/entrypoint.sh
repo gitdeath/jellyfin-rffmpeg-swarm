@@ -534,6 +534,9 @@ else
     echo "INFO: Existing Live TV config found. Skipping creation."
 fi
 
+# Set a umask to ensure all files created by Jellyfin and its children (like ffmpeg) are group-writable.
+umask 002
+
 # Start Jellyfin
 /jellyfin/jellyfin --datadir /config --cachedir /cache --ffmpeg /usr/local/bin/ffmpeg &
 # Wait for the Jellyfin process to terminate.

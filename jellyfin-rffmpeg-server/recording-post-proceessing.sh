@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Set a umask to ensure all files created by this script and its children are group-writable.
+umask 002
+
 # Generate a date stamp for the log file name, e.g., "2025-10-13"
 DATESTAMP=$(date +'%Y-%m-%d')
 
