@@ -94,8 +94,11 @@ log "Success: File systems mounted successfully."
   done
 ) &
 
-# Trap SIGTERM and SIGINT signals to allow for graceful shutdown
-trap "log 'Received shutdown signal, stopping sshd...'; pkill -f /usr/sbin/sshd; wait; exit 0" SIGTERM SIGINT
+# Trap SIGTERM and SIGINT to allow for graceful shutdown.
+# When a signal is received, it logs the event, kills all child processes (sshd, and the background loops),
+# waits for them to terminate, and then exits cleanly.
+# The 'jobs -p' command lists the PIDs of all background jobs.
+trap "log 'Received shutdown signal, stopping all processes...'; kill \$(jobs -p); wait; exit 0" SIGTERM SIGINT
 
 log "Starting SSHD..."
 # Create the directory for sshd privilege separation
