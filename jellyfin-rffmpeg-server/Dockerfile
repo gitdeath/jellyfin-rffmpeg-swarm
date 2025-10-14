@@ -94,11 +94,11 @@ RUN \
     mkdir -p /var/lib/nfs/rpc_pipefs /var/lib/nfs/v4recovery && \
     echo "rpc_pipefs  /var/lib/nfs/rpc_pipefs  rpc_pipefs  defaults  0  0" >> /etc/fstab && \
     echo "nfsd        /proc/fs/nfsd            nfsd        defaults  0  0" >> /etc/fstab && \
-    mkdir -p /rffmpeg/.ssh /transcodes /cache /cache/temp /config /home/transcodessh/.ssh && \
+    mkdir -p /rffmpeg/.ssh /transcodes /cache /cache/temp /config /livetv /home/transcodessh/.ssh && \
     chown -R transcodessh:users /home/transcodessh && \
     chown -R transcodessh:users /rffmpeg/.ssh && \
     chmod 700 /home/transcodessh/.ssh /rffmpeg/.ssh && \
-    chgrp users /transcodes /cache /cache/temp /config && \
+    chgrp users /transcodes /cache /cache/temp /config /livetv && \
     sed -i \
         -e 's;#   IdentityFile ~/.ssh/id_rsa;   IdentityFile /run/rffmpeg/.ssh/id_rsa;' \
         -e 's;#   UserKnownHostsFile ~/.ssh/known_hosts.d/%k;   UserKnownHostsFile /dev/null ;' \
