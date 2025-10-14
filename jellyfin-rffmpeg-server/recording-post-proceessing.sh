@@ -32,8 +32,8 @@ case "$COMMAND" in
         # Define a temporary file name for the cut version
         TEMP_FILE="${INPUT_FILE}.tmp.mkv"
 
-        # Run comcut, creating a new temporary output file and specifying the ini path
-        /usr/local/bin/comcut --comskip-ini="$COMSKIP_INI" "$INPUT_FILE" "$TEMP_FILE" >> "$LOG_FILE" 2>&1
+        # Run comcut as the 'transcodessh' user to ensure correct file ownership.
+        su transcodessh -c "/usr/local/bin/comcut --comskip-ini='${COMSKIP_INI}' '${INPUT_FILE}' '${TEMP_FILE}'" >> "$LOG_FILE" 2>&1
         EXIT_CODE=$?
 
         # If comcut succeeded and created a valid output file, replace the original
@@ -50,15 +50,15 @@ case "$COMMAND" in
 
     comchap)
         echo "Running full comchap process (detect and add chapters)..." >> "$LOG_FILE"
-        # Run comchap and explicitly specify the ini path
-        /usr/local/bin/comchap --comskip-ini="$COMSKIP_INI" "$INPUT_FILE" >> "$LOG_FILE" 2>&1
+        # Run comchap as the 'transcodessh' user.
+        su transcodessh -c "/usr/local/bin/comchap --comskip-ini='${COMSKIP_INI}' '${INPUT_FILE}'" >> "$LOG_FILE" 2>&1
         EXIT_CODE=$?
         ;;
 
     *)
         echo "WARNING: Invalid command '$COMMAND'. Defaulting to full comchap process." >> "$LOG_FILE"
-        # Run comchap and explicitly specify the ini path
-        /usr/local/bin/comchap --comskip-ini="$COMSKIP_INI" "$INPUT_FILE" >> "$LOG_FILE" 2>&1
+        # Run comchap as the 'transcodessh' user.
+        su transcodessh -c "/usr/local/bin/comchap --comskip-ini='${COMSKIP_INI}' '${INPUT_FILE}'" >> "$LOG_FILE" 2>&1
         EXIT_CODE=$?
         ;;
 esac

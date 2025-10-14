@@ -80,9 +80,9 @@ RUN apt-get -y update --fix-missing && \
 # Downloads the rffmpeg binary. 'ADD' is used here because it can handle URLs and
 # offers better caching for remote files compared to 'RUN wget'.
 ADD ${RFFMPEG_URL} /usr/local/bin/rffmpeg
-RUN chmod +x /usr/local/bin/rffmpeg && \
-    ln -s /usr/local/bin/rffmpeg /usr/local/bin/ffmpeg && \
-    ln -s /usr/local/bin/rffmpeg /usr/local/bin/ffprobe
+RUN chmod 755 /usr/local/bin/rffmpeg && \
+    ln -sf /usr/local/bin/rffmpeg /usr/local/bin/ffmpeg && \
+    ln -sf /usr/local/bin/rffmpeg /usr/local/bin/ffprobe
 
 # Creates the 'transcodessh' user, sets up required directories, and configures permissions.
 # This ensures the NFS server and SSH daemon have the correct environment to run in.
