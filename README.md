@@ -34,6 +34,7 @@ sudo apt install -y nfs-common nfs-kernel-server intel-opencl-icd
     ```
 -   **Enable Intel QSV**: Follow the official Jellyfin documentation to enable Intel QSV, apply any necessary kernel patches, and configure Low-Power (LP) mode for your hardware.
     -   **Jellyfin Intel Hardware Acceleration Guide**: jellyfin.org/docs/administration/hardware-acceleration/intel
+    -   **Known Issues & Fixes**: https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/known-issues#intel-on-linux
 
 ### 4. Create Host Directories
 Create the directories on the host that the `jellyfin-server` container will use for its internal NFS exports.
@@ -155,6 +156,22 @@ You can change this behavior from the Jellyfin dashboard by navigating to **Dash
 -   To use the default chapter mode, use: `"{path}" comchap`
 
 Logs for all post-processing jobs are stored in `/config/logs/post-processing_YYYY-MM-DD.log`.
+
+## Default Hardware Acceleration
+
+This project automatically configures Jellyfin for Intel Quick Sync Video (QSV) hardware acceleration to provide excellent transcoding performance out-of-the-box.
+
+The default settings are conservative to ensure broad compatibility with most Intel CPUs that support QSV (approximately 7th generation and newer).
+
+### Improving Performance on Newer Hardware
+
+If your server and worker nodes have newer Intel CPUs (e.g., 9th generation or newer), you can often achieve better performance or efficiency by enabling more advanced transcoding features.
+
+You can customize these settings in the Jellyfin dashboard under **Dashboard -> Playback -> Transcoding**. For example, on supported hardware, you may want to enable:
+
+-   **Intel Low-Power HEVC hardware encoder**
+
+Always test changes to ensure stability with your specific hardware.
 
 ## Architecture Deep Dive: The Embedded NFS Server
 

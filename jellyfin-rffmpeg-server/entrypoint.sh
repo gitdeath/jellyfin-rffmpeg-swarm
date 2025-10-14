@@ -511,11 +511,11 @@ fi
 # Create default Live TV configuration if it doesn't exist.
 # This is done in the entrypoint so it can write to the /config volume after it's mounted.
 # It checks for the file's existence to avoid overwriting user changes on subsequent runs.
-LIVETV_CONFIG_DIR="/config/config"
-LIVETV_CONFIG_FILE="$LIVETV_CONFIG_DIR/livetv.xml"
+CONFIG_DIR="/config/config"
+LIVETV_CONFIG_FILE="$CONFIG_DIR/livetv.xml"
 if [ ! -f "$LIVETV_CONFIG_FILE" ]; then
     echo "INFO: Live TV config not found. Creating default at $LIVETV_CONFIG_FILE"
-    mkdir -p "$LIVETV_CONFIG_DIR"
+    mkdir -p "$CONFIG_DIR"
     cat > "$LIVETV_CONFIG_FILE" << EOF
 <LiveTvOptions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <RecordingPath>/livetv</RecordingPath>
@@ -528,10 +528,34 @@ if [ ! -f "$LIVETV_CONFIG_FILE" ]; then
   <RecordingPostProcessorArguments>"{path}"</RecordingPostProcessorArguments>
 </LiveTvOptions>
 EOF
-    # chown to the jellyfin user if it's not root, to ensure it has write permissions.
-    # chown -R jellyfin:jellyfin "$LIVETV_CONFIG_DIR"
 else
     echo "INFO: Existing Live TV config found. Skipping creation."
+fi
+
+# Create default Encoding configuration if it doesn't exist.
+ENCODING_CONFIG_FILE="$CONFIG_DIR/encoding.xml"
+if [ ! -f "$ENCODING_CONFIG_FILE" ]; then
+    echo "INFO: Encoding config not found. Creating default at $ENCODING_CONFIG_FILE"
+    mkdir -p "$CONFIG_DIR"
+    cat > "$ENCODING_CONFIG_FILE" << EOF
+<?xml version="1.0" encoding="utf-8"?>
+<EncodingOptions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <TranscodingTempPath>/transcodes</TranscodingTempPath>
+  <EnableThrottling>true</EnableThrottling>
+  <ThrottleDelaySeconds>180</ThrottleDelaySeconds>
+  <EnableSegmentDeletion>true</EnableSegmentDeletion>
+  <SegmentKeepSeconds>720</SegmentKeepSeconds>
+  <HardwareAccelerationType>qsv</HardwareAccelerationType>
+  <EncoderAppPathDisplay>/usr/local/bin/ffmpeg</EncoderAppPathDisplay>
+  <EnableEnhancedNvdecDecoder>true</EnableEnhancedNvdecDecoder>
+  <PreferSystemNativeHwDecoder>true</PreferSystemNativeHwDecoder>
+  <EnableIntelLowPowerH264HwEncoder>true</EnableIntelLowPowerH264HwEncoder>
+  <EnableIntelLowPowerHevcHwEncoder>false</EnableIntelLowPowerHevcHwEncoder>
+  <EnableHardwareEncoding>true</EnableHardwareEncoding>
+</EncodingOptions>
+EOF
+else
+    echo "INFO: Existing Encoding config found. Skipping creation."
 fi
 
 # Set a umask to ensure all files created by Jellyfin and its children (like ffmpeg) are group-writable.
