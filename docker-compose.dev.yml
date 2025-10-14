@@ -64,7 +64,8 @@ services:
     deploy:
       mode: replicated
       replicas: 1 # Start with 1 worker for dev
-      max_replicas_per_node: 1
+      placement:
+        max_replicas_per_node: 1
 
 networks:
   jellyfin-net:

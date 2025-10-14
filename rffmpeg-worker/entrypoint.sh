@@ -69,45 +69,35 @@ log "Success: File systems mounted successfully."
   done
 ) &
 
-# Background process: Monitor NFS connection and shut down if it becomes unresponsive.
-(
-  FAIL_COUNT=0
-  MAX_FAILS=3
-  SLEEP_INTERVAL=3
-  while true; do
-    sleep $SLEEP_INTERVAL
-    if timeout 2 df -h >/dev/null 2>&1; then
-      if [ $FAIL_COUNT -gt 0 ]; then
-        log "INFO: NFS connection recovered after $FAIL_COUNT failed attempts."
-      fi
-      FAIL_COUNT=0
-    else
-      ((FAIL_COUNT++))
-      log "WARNING: 'df -h' timed out. Consecutive failures: $FAIL_COUNT/$MAX_FAILS"
-      if [ $FAIL_COUNT -ge $MAX_FAILS ]; then
-        log "CRITICAL: NFS is unresponsive. Shutting down to prevent new jobs."
-        # Kill the main sshd process to trigger a container exit.
-        pkill -f /usr/sbin/sshd
-        break
-      fi
-    fi
-  done
-) &
-
-# Trap SIGTERM and SIGINT to allow for graceful shutdown.
-# When a signal is received, it logs the event, kills all child processes (sshd, and the background loops),
-# waits for them to terminate, and then exits cleanly.
-# The 'jobs -p' command lists the PIDs of all background jobs.
-trap "log 'Received shutdown signal, stopping all processes...'; kill \$(jobs -p); wait; exit 0" SIGTERM SIGINT
-
 log "Starting SSHD..."
 # Create the directory for sshd privilege separation
 mkdir -p /run/sshd
 chmod 700 /run/sshd
-# Start the sshd service as the main container process.
+# Start the sshd service in the background.
 # The -e flag sends logs to stderr, which is useful for container logging.
 /usr/sbin/sshd -D -e &
 
-# Wait for the sshd process to exit. This script will terminate when sshd does.
-wait $!
-log "SSHD has stopped. Exiting container."
+# The NFS monitoring loop now runs in the foreground and controls the container's lifecycle.
+FAIL_COUNT=0
+MAX_FAILS=3
+SLEEP_INTERVAL=5
+
+while true; do
+  if ! pgrep -x "sshd" >/dev/null; then
+    log "CRITICAL: SSHD process is not running. Terminating container."
+    exit 1
+  elif timeout 2 df -h >/dev/null 2>&1; then
+    if [ $FAIL_COUNT -gt 0 ]; then
+      log "INFO: NFS connection recovered after $FAIL_COUNT failed attempts."
+    fi
+    FAIL_COUNT=0
+  else
+    ((FAIL_COUNT++))
+    log "WARNING: NFS mount check failed. Consecutive failures: $FAIL_COUNT/$MAX_FAILS"
+    if [ $FAIL_COUNT -ge $MAX_FAILS ]; then
+      log "CRITICAL: NFS is unresponsive. Terminating container."
+      exit 1
+    fi
+  fi
+  sleep $SLEEP_INTERVAL
+done
