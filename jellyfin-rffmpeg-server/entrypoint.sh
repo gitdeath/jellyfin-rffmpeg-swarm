@@ -521,9 +521,6 @@ if [ ! -f "$LIVETV_CONFIG_FILE" ]; then
   <RecordingPath>/livetv</RecordingPath>
   <EnableRecordingSubfolders>false</EnableRecordingSubfolders>
   <EnableOriginalAudioWithEncodedRecordings>false</EnableOriginalAudioWithEncodedRecordings>
-  <MediaLocationsCreated>
-    <string>/livetv</string>
-  </MediaLocationsCreated>
   <RecordingPostProcessor>/recording-post-processing.sh</RecordingPostProcessor>
   <RecordingPostProcessorArguments>"{path}"</RecordingPostProcessorArguments>
 </LiveTvOptions>
