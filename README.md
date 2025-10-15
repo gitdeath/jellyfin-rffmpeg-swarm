@@ -6,7 +6,7 @@ This project creates a scalable, distributed Jellyfin media server using Docker 
 
 The architecture is composed of two primary services that communicate over a secure Docker overlay network:
 
--   **`jellyfin-server`**: The main Jellyfin instance. It does not perform transcodes itself but instead delegates them to available workers via SSH using `rffmpeg`. This service also runs an integrated **NFS server** to share the `/transcodes` and `/cache` directories, ensuring all nodes have access to the same temporary files.
+-   **`jellyfin-server`**: The main Jellyfin instance. It does not perform transcodes itself but instead delegates them to available workers via SSH using `rffmpeg`. This service also runs an integrated **NFS server** to share the `/transcodes` and `/cache` directories, ensuring all nodes have access to the same temporary files. **Logs for `rffmpeg` are automatically viewable in the Jellyfin Dashboard under the "Logs" section.**
 -   **`transcode-worker`**: The workhorses of the cluster. These are lightweight, scalable containers that listen for transcoding jobs from the server. You can add or remove workers on-the-fly to match your expected transcoding load.
 
 ## Host Setup Guide
@@ -113,7 +113,9 @@ docker service scale jellyfin_transcode-worker=5
 
 ## Development Environment
 
-This repository includes a `docker-compose.dev.yml` file for testing development builds, which are tagged with `:dev` in the container registry.
+The "development" environment is designed for testing pre-release (Release Candidate or Unstable) versions of Jellyfin, not for development of this project itself. It allows you to run a separate, isolated Jellyfin instance using the `:dev` image tags, which are built using the `JELLYFIN_DEV` version specified in `versions.env`.
+
+This repository includes a `docker-compose.dev.yml` file for deploying this test environment.
 
 ### 1. Deploy the Dev Stack
 1.  Download the `docker-compose.dev.yml` file.
@@ -155,7 +157,7 @@ You can change this behavior from the Jellyfin dashboard by navigating to **Dash
 -   To enable commercial cutting, change the value to: `"{path}" comcut`
 -   To use the default chapter mode, use: `"{path}" comchap`
 
-Logs for all post-processing jobs are stored in `/config/logs/post-processing_YYYY-MM-DD.log`.
+Logs for all post-processing jobs are stored in `/config/log/` and are viewable directly in the **Jellyfin Dashboard** under the "Logs" section.
 
 ## Default Hardware Acceleration
 
@@ -178,6 +180,7 @@ Always test changes to ensure stability with your specific hardware.
 A key feature of this project is the NFS server running *inside* the `jellyfin-server` container. This is a deliberate design choice to solve a critical problem in distributed transcoding.
 
 -   **Why it's necessary**: When a worker transcodes a file, it writes temporary chunks and the final output to a specific path (e.g., `/transcodes/xyz.ts`). The main Jellyfin server must then be able to read from that *exact same path* to serve the file to the client. By having the server export `/transcodes` and `/cache`, we guarantee that both the server and all workers share a consistent, writable view of these directories.
+-   **Performance**: For optimal performance, the `/transcodes` and `/cache` directories on the host running the `jellyfin-server` should be located on a fast, local SSD. This changes the I/O pattern for transcoded data from a costly "read from NAS, write to NAS, read from NAS" cycle to a much more efficient "read from NAS, write to local SSD, read from local SSD" workflow. This significantly reduces I/O load on your primary storage array.
 -   **Elevated Privileges**: Mounting an NFS share from within a container requires elevated privileges. This is why the `transcode-worker` service needs `cap_add: [SYS_ADMIN]` in the compose file. This allows it to run `mount -a` and connect to the server's exports.
 -   **Troubleshooting**: If workers fail to start, check their logs for `mount` errors. This usually indicates a problem with network connectivity to the server container or a lack of `SYS_ADMIN` capability.
 
