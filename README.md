@@ -144,7 +144,7 @@ This project is pre-configured to enhance Jellyfin's DVR functionality with auto
 
 ### Recording Path
 
-The default recording path is automatically set to `/livetv`. You **must** configure the `livetv` volume in `docker-compose.yml` to point to a persistent storage location for your DVR recordings.
+The default recording path is automatically set to `/livetv`. You **must** configure the `livetv` volume in `docker-compose.yml` to point to a persistent storage location for your DVR recordings. On your NAS, ensure the exported directory has write permissions for the `users` group (GID 100) to allow the server to save recordings and post-processing files.
 
 ### Automated Commercial Processing
 

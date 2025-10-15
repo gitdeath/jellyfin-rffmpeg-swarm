@@ -12,6 +12,19 @@ INPUT_FILE="$1"
 COMMAND="$2" # The second argument from Jellyfin, e.g., "comcut" or "comchap"
 COMSKIP_INI="/etc/comskip.ini" # Define the path to your system ini file
 
+# --- Locking Mechanism ---
+# Create a unique lock file path based on the input file to prevent concurrent runs.
+LOCK_FILE="/cache/temp/$(basename "$INPUT_FILE").lock"
+
+if [ -f "$LOCK_FILE" ]; then
+    echo "Lock file exists for $INPUT_FILE. Another process is running. Exiting." >> "$LOG_FILE"
+    exit 1
+fi
+
+# Create the lock file and set a trap to ensure it's removed on exit.
+touch "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
 # --- Start of Logging ---
 echo "----------------------------------------------------" >> "$LOG_FILE"
 echo "Processing request for: $INPUT_FILE" >> "$LOG_FILE"
@@ -39,6 +52,22 @@ TEMP_OUTPUT_FILE="/livetv/${TEMP_BASENAME}.mkv"
 # Move the original file to the temporary path.
 mv "$INPUT_FILE" "$TEMP_INPUT_FILE"
 
+# --- NFS Workaround ---
+# After moving the file, we need to wait for it to become visible on the filesystem.
+# This is a workaround for potential NFS attribute caching delays where a file appears
+# to not exist for a few moments after being moved.
+i=0
+while [ ! -f "$TEMP_INPUT_FILE" ] && [ $i -lt 10 ]; do
+  sleep 1
+  ((i++))
+done
+
+if [ ! -f "$TEMP_INPUT_FILE" ]; then
+    echo "ERROR: Moved temporary file is not visible after 10 seconds. Aborting." >> "$LOG_FILE"
+    mv "$TEMP_INPUT_FILE" "$INPUT_FILE" 2>/dev/null # Attempt to restore original file
+    exit 1
+fi
+
 # --- Execute Command ---
 case "$COMMAND" in
     comcut)
@@ -51,6 +80,8 @@ case "$COMMAND" in
         if [ $EXIT_CODE -eq 0 ] && [ -s "$TEMP_OUTPUT_FILE" ]; then
             echo "Comcut successful. Moving processed file to final destination." >> "$LOG_FILE"
             mv "$TEMP_OUTPUT_FILE" "$OUTPUT_FILE"
+            # On success, we can safely remove the temporary input file.
+            rm -f "$TEMP_INPUT_FILE"
         else
             echo "ERROR: comcut failed or created an empty file. Original file is unchanged." >> "$LOG_FILE"
             # CRITICAL: Move the temporary file back to restore the original recording.
@@ -68,6 +99,8 @@ case "$COMMAND" in
         if [ $EXIT_CODE -eq 0 ] && [ -s "$TEMP_OUTPUT_FILE" ]; then
             echo "Comchap successful. Moving processed file to final destination." >> "$LOG_FILE"
             mv "$TEMP_OUTPUT_FILE" "$OUTPUT_FILE"
+            # On success, we can safely remove the temporary input file.
+            rm -f "$TEMP_INPUT_FILE"
         else
             echo "ERROR: comchap failed or created an empty file. Original file is unchanged." >> "$LOG_FILE"
             # CRITICAL: Move the temporary file back to restore the original recording.
@@ -78,12 +111,10 @@ case "$COMMAND" in
     *)
         echo "WARNING: Invalid command '$COMMAND'. No action taken." >> "$LOG_FILE"
         EXIT_CODE=1
+        # CRITICAL: Restore the original file since no action was taken.
+        mv "$TEMP_INPUT_FILE" "$INPUT_FILE"
         ;;
 esac
-
-# Clean up any remaining temporary files.
-# The input file should have been moved back or replaced, so it's safe to remove any lingering temp file.
-rm -f "$TEMP_INPUT_FILE" >/dev/null 2>&1
 
 # Check the exit code of the executed command to determine success or failure
 if [ $EXIT_CODE -eq 0 ]; then
