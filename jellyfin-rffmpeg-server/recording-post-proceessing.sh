@@ -86,7 +86,7 @@ case "$COMMAND" in
     comcut)
         echo "Running comcut to physically remove commercials..." >> "$LOG_FILE"
 
-        su transcodessh -c "/usr/local/bin/comcut --comskip-ini='${COMSKIP_INI}' ${OPTIONAL_ARGS} '${TEMP_INPUT_FILE}' '${TEMP_OUTPUT_FILE}'" >> "$LOG_FILE" 2>&1
+        /usr/local/bin/comcut --comskip-ini="${COMSKIP_INI}" ${OPTIONAL_ARGS} "${TEMP_INPUT_FILE}" "${TEMP_OUTPUT_FILE}" >> "$LOG_FILE" 2>&1
         EXIT_CODE=$?
 
         # If comcut succeeded, move the processed file back to the original location with the correct name.
@@ -105,7 +105,7 @@ case "$COMMAND" in
     comchap)
         echo "Running full comchap process (detect and add chapters)..." >> "$LOG_FILE"
 
-        su transcodessh -c "/usr/local/bin/comchap --comskip-ini='${COMSKIP_INI}' ${OPTIONAL_ARGS} '${TEMP_INPUT_FILE}' '${TEMP_OUTPUT_FILE}'" >> "$LOG_FILE" 2>&1
+        /usr/local/bin/comchap --comskip-ini="${COMSKIP_INI}" ${OPTIONAL_ARGS} "${TEMP_INPUT_FILE}" "${TEMP_OUTPUT_FILE}" >> "$LOG_FILE" 2>&1
         EXIT_CODE=$?
 
         # If comchap succeeded, move the processed file back to the original location with the correct name.
