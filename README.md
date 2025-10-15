@@ -156,7 +156,6 @@ The `jellyfin-server` is configured to automatically run a post-processing scrip
 You can change this behavior from the Jellyfin dashboard by navigating to **Dashboard -> Live TV -> DVR Settings** and editing the **Post-processor command line arguments** field.
 -   To enable commercial cutting, change the value to: `"{path}" comcut`
 -   To use the default chapter mode, use: `"{path}" comchap`
--   To use the default chapter mode, leave the value as: `"{path}" comchap`
 -   **Verbose Logging**: To get more detailed logs for troubleshooting, you can add the `--verbose` flag, e.g., `"{path}" comchap --verbose`. 
 
 Logs for all post-processing jobs are stored in `/config/log/` and are viewable directly in the **Jellyfin Dashboard** under the "Logs" section.
