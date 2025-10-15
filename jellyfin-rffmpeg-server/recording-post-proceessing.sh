@@ -9,8 +9,26 @@ DATESTAMP=$(date +'%Y-%m-%d')
 # Create a log file for the current date. All logs from the same day will be appended.
 LOG_FILE="/config/log/post-processing_${DATESTAMP}.log"
 INPUT_FILE="$1"
-COMMAND="$2" # The second argument from Jellyfin, e.g., "comcut" or "comchap"
-COMSKIP_INI="/etc/comskip.ini" # Define the path to your system ini file
+shift # The first argument is always the file path.
+
+# --- Argument Parsing ---
+# Loop through the remaining arguments to find the command and any optional flags.
+# This allows for flexible argument order (e.g., "--verbose comchap" or "comchap --verbose").
+COMMAND="comchap" # Default to comchap if no command is specified.
+OPTIONAL_ARGS=""
+for arg in "$@"; do
+  case "$arg" in
+    comcut|comchap)
+      COMMAND="$arg"
+      ;;
+    *)
+      # Append any other argument to the optional flags.
+      OPTIONAL_ARGS="${OPTIONAL_ARGS} ${arg}"
+      ;;
+  esac
+done
+
+COMSKIP_INI="/etc/comskip.ini"
 
 # --- Locking Mechanism ---
 # Create a unique lock file path based on the input file to prevent concurrent runs.
@@ -29,11 +47,6 @@ trap 'rm -f "$LOCK_FILE"' EXIT
 echo "----------------------------------------------------" >> "$LOG_FILE"
 echo "Processing request for: $INPUT_FILE" >> "$LOG_FILE"
 date >> "$LOG_FILE"
-
-# Set the default command to 'comchap' if the second argument is empty
-if [ -z "$COMMAND" ]; then
-    COMMAND="comchap"
-fi
 
 echo "Action: $COMMAND" >> "$LOG_FILE"
 echo "Using INI file: $COMSKIP_INI" >> "$LOG_FILE"
@@ -73,7 +86,7 @@ case "$COMMAND" in
     comcut)
         echo "Running comcut to physically remove commercials..." >> "$LOG_FILE"
 
-        su transcodessh -c "/usr/local/bin/comcut --comskip-ini='${COMSKIP_INI}' '${TEMP_INPUT_FILE}' '${TEMP_OUTPUT_FILE}'" >> "$LOG_FILE" 2>&1
+        su transcodessh -c "/usr/local/bin/comcut --comskip-ini='${COMSKIP_INI}' ${OPTIONAL_ARGS} '${TEMP_INPUT_FILE}' '${TEMP_OUTPUT_FILE}'" >> "$LOG_FILE" 2>&1
         EXIT_CODE=$?
 
         # If comcut succeeded, move the processed file back to the original location with the correct name.
@@ -92,7 +105,7 @@ case "$COMMAND" in
     comchap)
         echo "Running full comchap process (detect and add chapters)..." >> "$LOG_FILE"
 
-        su transcodessh -c "/usr/local/bin/comchap --comskip-ini='${COMSKIP_INI}' '${TEMP_INPUT_FILE}' '${TEMP_OUTPUT_FILE}'" >> "$LOG_FILE" 2>&1
+        su transcodessh -c "/usr/local/bin/comchap --comskip-ini='${COMSKIP_INI}' ${OPTIONAL_ARGS} '${TEMP_INPUT_FILE}' '${TEMP_OUTPUT_FILE}'" >> "$LOG_FILE" 2>&1
         EXIT_CODE=$?
 
         # If comchap succeeded, move the processed file back to the original location with the correct name.
