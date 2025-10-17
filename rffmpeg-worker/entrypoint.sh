@@ -82,9 +82,13 @@ mkdir -p /run/sshd
 chmod 700 /run/sshd
 # Start the sshd service in the background.
 # The -e flag sends logs to stderr, which is useful for container logging.
-if ! /usr/sbin/sshd -D -e & then
-  bail "Failed to start the SSHD service."
+/usr/sbin/sshd -D -e & 
+sleep 1 # Give sshd a moment to start
+# Check if sshd started successfully
+if ! pgrep sshd > /dev/null; then
+  bail "SSHD process did not start."
 fi
+log "SSHD started successfully."
 
 # The NFS monitoring loop now runs in the foreground and controls the container's lifecycle.
 FAIL_COUNT=0
