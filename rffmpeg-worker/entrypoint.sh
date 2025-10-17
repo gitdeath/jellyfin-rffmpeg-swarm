@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Prevent files/subdirectories from being created that are unreachable by remote rffmpeg workers
 umask 002
@@ -9,6 +8,12 @@ log() {
   echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 log "Starting rffmpeg-worker container..."
+
+# Function to log a critical error and exit
+bail() {
+  log "CRITICAL: $1"
+  exit 1
+}
 
 # Set up SSH authorized_keys from Docker secret
 if [ -f /run/secrets/rffmpeg_id_rsa_pub ]; then
@@ -48,8 +53,10 @@ echo "$NFS_SERVER_HOSTNAME:/transcodes /transcodes nfs rw,nolock,actimeo=1 0 0" 
 echo "$NFS_SERVER_HOSTNAME:/cache /cache nfs rw,nolock,actimeo=1 0 0" >> /etc/fstab
 
 # Attempt to mount file systems from /etc/fstab
-mount -a
-log "Success: File systems mounted successfully."
+if ! mount -a; then
+  bail "Failed to mount NFS shares from $NFS_SERVER_HOSTNAME. Check server status and network."
+fi
+log "INFO: File systems mounted successfully."
 
 # Background process: Attempt to update jellyfin-ffmpeg7 every 25 hours
 (
@@ -75,7 +82,9 @@ mkdir -p /run/sshd
 chmod 700 /run/sshd
 # Start the sshd service in the background.
 # The -e flag sends logs to stderr, which is useful for container logging.
-/usr/sbin/sshd -D -e &
+if ! /usr/sbin/sshd -D -e & then
+  bail "Failed to start the SSHD service."
+fi
 
 # The NFS monitoring loop now runs in the foreground and controls the container's lifecycle.
 FAIL_COUNT=0
@@ -84,8 +93,7 @@ SLEEP_INTERVAL=5
 
 while true; do
   if ! pgrep -x "sshd" >/dev/null; then
-    log "CRITICAL: SSHD process is not running. Terminating container."
-    exit 1
+    bail "SSHD process is not running. Terminating container."
   elif timeout 2 df -h >/dev/null 2>&1; then
     if [ $FAIL_COUNT -gt 0 ]; then
       log "INFO: NFS connection recovered after $FAIL_COUNT failed attempts."
@@ -95,8 +103,7 @@ while true; do
     ((FAIL_COUNT++))
     log "WARNING: NFS mount check failed. Consecutive failures: $FAIL_COUNT/$MAX_FAILS"
     if [ $FAIL_COUNT -ge $MAX_FAILS ]; then
-      log "CRITICAL: NFS is unresponsive. Terminating container."
-      exit 1
+      bail "NFS is unresponsive. Terminating container."
     fi
   fi
   sleep $SLEEP_INTERVAL
