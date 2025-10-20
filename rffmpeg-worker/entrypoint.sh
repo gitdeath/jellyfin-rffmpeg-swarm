@@ -51,6 +51,7 @@ fi
 log "INFO: Creating /etc/fstab to mount from $NFS_SERVER_HOSTNAME"
 echo "$NFS_SERVER_HOSTNAME:/transcodes /transcodes nfs rw,nolock,actimeo=1 0 0" > /etc/fstab
 echo "$NFS_SERVER_HOSTNAME:/cache /cache nfs rw,nolock,actimeo=1 0 0" >> /etc/fstab
+echo "$NFS_SERVER_HOSTNAME:/config /config nfs rw,nolock,actimeo=1 0 0" >> /etc/fstab
 
 # Attempt to mount file systems from /etc/fstab
 if ! mount -a; then

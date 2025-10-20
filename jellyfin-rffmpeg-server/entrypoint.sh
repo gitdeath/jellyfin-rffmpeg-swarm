@@ -472,6 +472,12 @@ fi
 # This can be overridden by setting the UMASK environment variable.
 umask "${UMASK:-002}" 
 
+# Ensure the /config directory exists and has the correct permissions before Jellyfin starts.
+# This is important because it's a host-mounted directory that we also export via NFS.
+mkdir -p /config/config /config/log
+chown -R jellyfin:users /config
+chmod -R 775 /config
+
 # rffmpeg setup ------
 # Copy SSH keys from Docker secrets to a runtime-only path.
 if [ -f /run/secrets/rffmpeg_id_rsa ] && [ -f /run/secrets/rffmpeg_id_rsa_pub ]; then
