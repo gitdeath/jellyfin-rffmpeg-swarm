@@ -7,7 +7,7 @@ This project creates a scalable, distributed Jellyfin media server using Docker 
 The architecture is composed of two primary services that communicate over a secure Docker overlay network:
 
 -   **`jellyfin-server`**: The main Jellyfin instance. It does not perform transcodes itself but instead delegates them to available workers via SSH using `rffmpeg`. This service also runs an integrated **NFS server** to share the `/transcodes` and `/cache` directories, ensuring all nodes have access to the same temporary files. **Logs for `rffmpeg` are automatically viewable in the Jellyfin Dashboard under the "Logs" section.**
--   **`transcode-worker`**: The workhorses of the cluster. These are lightweight, scalable containers that listen for transcoding jobs from the server. They mount the `/transcodes`, `/cache`, and `/config` directories from the server via NFS. You can add or remove workers on-the-fly to match your expected transcoding load.
+-   **`transcode-worker`**: The workhorses of the cluster. These are lightweight, scalable containers that listen for transcoding jobs from the server. You can add or remove workers on-the-fly to match your expected transcoding load.
 
 ## Host Setup Guide
 
@@ -20,14 +20,14 @@ The following steps must be performed on **all nodes** in your Docker Swarm clus
 
 ### 2. Install System Dependencies
 Install the necessary packages for NFS client/server functionality and Intel hardware acceleration.
-``` 
+```bash
 sudo apt update
 sudo apt install -y nfs-common nfs-kernel-server intel-opencl-icd
 ```
 
 ### 3. Configure Kernel and Drivers
 -   **Load Kernel Modules**: Ensure the required NFS and Intel graphics modules are loaded on boot.
-    ``` 
+    ```bash
     sudo sh -c "echo 'nfsd' >> /etc/modules"
     sudo sh -c "echo 'nfs' >> /etc/modules"
     sudo modprobe nfsd nfs
@@ -38,15 +38,15 @@ sudo apt install -y nfs-common nfs-kernel-server intel-opencl-icd
 
 ### 4. Create Host Directories
 Create the directories on the host that the `jellyfin-server` container will use for its internal NFS exports.
-``` 
-sudo mkdir -p /config /transcodes /cache
-sudo chgrp users /config /transcodes /cache
-sudo chmod 775 /config /transcodes /cache
+```bash
+sudo mkdir -p /transcodes /cache
+sudo chgrp users /transcodes /cache
+sudo chmod 775 /transcodes /cache
 ```
 
 ### 5. Disable AppArmor (Critical)
 AppArmor's security policies prevent the `jellyfin-server` container from acquiring the permissions needed to run its own NFS server. It must be disabled on the host.
-``` 
+```bash
 sudo systemctl stop apparmor && sudo systemctl disable apparmor
 sudo apt purge -y apparmor
 # This command adds 'apparmor=0' to the kernel boot parameters
@@ -58,7 +58,7 @@ sudo update-grub
 ### 6. Configure Docker Swarm
 -   Install Docker and initialize your Swarm cluster if you haven't already.
 -   Deploy the `device-mapping-manager` on each node. This utility ensures that GPU devices (`/dev/dri`) are correctly mapped to containers across the Swarm.
-    ``` 
+    ```bash
     docker run -d --restart always --name device-manager --privileged \
       --cgroupns=host --pid=host --userns=host \
       -v /sys:/host/sys -v /var/run/docker.sock:/var/run/docker.sock \
@@ -71,14 +71,14 @@ Follow these steps on your Docker Swarm manager node.
 
 ### 1. Prepare Deployment Files
 Create a directory for your stack and download the compose file.
-``` 
+```bash
 mkdir -p ~/jellyfin-swarm && cd ~/jellyfin-swarm
 wget https://raw.githubusercontent.com/gitdeath/jellyfin-rffmpeg-swarm/main/docker-compose.yml
 ```
 
 ### 2. Generate and Store SSH Keys
 Generate an SSH key pair and store it securely as Docker secrets. These keys are used for communication between the server and workers.
-``` 
+```bash
 ssh-keygen -t rsa -b 4096 -f ./rffmpeg_id_rsa -q -N ""
 
 # Create the secrets in Docker Swarm
@@ -92,7 +92,7 @@ rm ./rffmpeg_id_rsa ./rffmpeg_id_rsa.pub
 ### 3. Configure and Deploy
 Before deploying, you **must** edit `docker-compose.yml` and update the `volumes` section to point to your external NFS server for `media`, `jellyfin_config`, and `livetv`.
 
-``` 
+```bash
 # Example of editing the file
 nano docker-compose.yml
 
@@ -102,11 +102,11 @@ docker stack deploy -c docker-compose.yml jellyfin
 
 ### 4. Verify and Scale
 Check the status of your services to ensure they are running correctly.
-``` 
+```bash
 docker stack services jellyfin
 ```
 Once verified, you can access the Jellyfin UI at `http://<YOUR_SWARM_IP>:8096` and scale your workers as needed.
-``` 
+```bash
 # Scale to 5 workers
 docker service scale jellyfin_transcode-worker=5
 ```
@@ -122,14 +122,14 @@ This repository includes a `docker-compose.dev.yml` file for deploying this test
 2.  **Important**: Edit the `volumes` section to point to separate `_dev` paths on your NFS server to avoid data conflicts with production.
 3.  Deploy the stack with a unique name (e.g., `jellyfin-dev`).
 
-``` 
+```bash
 wget https://raw.githubusercontent.com/gitdeath/jellyfin-rffmpeg-swarm/main/docker-compose.dev.yml
 docker stack deploy -c docker-compose.dev.yml jellyfin-dev
 ```
 
 ### 2. Development SSH Keys
 The development stack requires its own set of SSH keys to maintain isolation.
-``` 
+```bash
 # Generate a new key pair specifically for development
 ssh-keygen -t rsa -b 4096 -f ./rffmpeg_id_rsa_dev -q -N ""
 

@@ -11,20 +11,19 @@ services:
       # Set your timezone, e.g., "America/Chicago"
       # - TZ=
       # Set NFS log level to DEBUG for verbose output. Default is INFO.
-      - NFS_LOG_LEVEL=INFO
-      - NFS_EXPORT_0=/transcodes *(rw,sync,no_subtree_check,no_root_squash,insecure,fsid=1)
-      - NFS_EXPORT_1=/cache *(rw,sync,no_subtree_check,no_root_squash,insecure,fsid=2)
-      - NFS_EXPORT_2=/config *(rw,sync,no_subtree_check,no_root_squash,insecure,fsid=3)
+      - NFS_LOG_LEVEL=DEBUG
+      - NFS_EXPORT_0=/transcodes *(rw,sync,no_subtree_check,no_root_squash,insecure)
+      - NFS_EXPORT_1=/cache *(rw,sync,no_subtree_check,no_root_squash,insecure)
     ports:
       - "8097:8096" # Jellyfin Dev Web UI on a different port
     volumes:
       # Named volumes using an external NFS server for persistent data.
       # These are defined in the 'volumes:' section at the bottom of this file.
+      - jellyfin_config_dev:/config
       - livetv_dev:/livetv
       - media:/media:ro
       # Host-path mounts for the directories this container will export via its own NFS server.
       # Ensure these directories exist on the node where this container runs.
-      - /config_dev:/config
       - /transcodes:/transcodes
       - /cache:/cache
       # Pass through GPU for hardware acceleration (optional)
@@ -51,7 +50,8 @@ services:
     volumes:
       # Named volumes using an external NFS server, shared with the jellyfin-server.
       # The /transcodes and /cache directories are mounted internally by the container's
-      # entrypoint script.
+      # entrypoint script using the fstab defined in its Dockerfile.
+      - jellyfin_config_dev:/config
       - media:/media:ro
       - livetv_dev:/livetv
       # Pass through GPU for hardware acceleration (optional)
@@ -73,6 +73,11 @@ networks:
 
 volumes:
   # IMPORTANT: These volumes point to separate dev paths on your NFS server.
+  jellyfin_config_dev:
+    driver_opts:
+      type: "nfs"
+      o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,rw"
+      device: ":/path/to/your/jellyfin/config_dev"
   livetv_dev:
     driver_opts:
       type: "nfs"
