@@ -43,6 +43,8 @@ services:
   transcode-worker:
     image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-worker:dev
     hostname: "jellyfin-transcode-dev-{{.Task.Slot}}"
+    # security_opt:
+    #   - apparmor:unconfined
     cap_add:
       - SYS_ADMIN
     # Required so the worker container can run `mount -a` to mount the NFS exports

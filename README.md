@@ -46,6 +46,17 @@ sudo chmod 775 /transcodes /cache
 
 ### 5. Disable AppArmor (Critical)
 AppArmor's security policies prevent the `jellyfin-server` container from acquiring the permissions needed to run its own NFS server. It must be disabled on the host.
+
+As an alternative to disabling AppArmor entirely, you can try adding the following `security_opt` to the `transcode-worker` service in your `docker-compose.yml` file. **Note:** This has not been tested.
+```yml
+services:
+  transcode-worker:
+    # ... other options
+    security_opt:
+      - apparmor:unconfined
+```
+
+If you choose not to use the `security_opt`, you can disable AppArmor on the host with the following commands:
 ```bash
 sudo systemctl stop apparmor && sudo systemctl disable apparmor
 sudo apt purge -y apparmor
@@ -190,11 +201,11 @@ A key feature of this project is the NFS server running *inside* the `jellyfin-s
 
 This project builds on and uses work from the following upstream projects — thank you to the original authors:
 
--   **rffmpeg** (Joshua Boniface) — Provides the remote-ffmpeg tooling used to distribute transcoding jobs.
--   **docker-nfs-server** (obeone) — The NFS server logic and parts of the `entrypoint.sh` are adapted from this project.
--   **Jellyfin** — The upstream open-source media server.
--   **device-mapping-manager** (allfro) — Allows GPU devices to be mapped correctly within the Swarm.
--   **Comskip** (Erik Kaashoek) — The core commercial detection engine.
--   **comchap** (Brett Sheleski) — The scripts used for DVR post-processing.
+-   [**rffmpeg**](https://github.com/joshuaboniface/rffmpeg) (Joshua Boniface) — Provides the remote-ffmpeg tooling used to distribute transcoding jobs.
+-   [**docker-nfs-server**](https://github.com/obeone/docker-nfs-server) (obeone) — The NFS server logic and parts of the `entrypoint.sh` are adapted from this project.
+-   [**Jellyfin**](https://github.com/jellyfin/jellyfin) — The upstream open-source media server.
+-   [**device-mapping-manager**](https://github.com/allfro/device-mapping-manager) (allfro) — Allows GPU devices to be mapped correctly within the Swarm.
+-   [**Comskip**](https://github.com/erikkaashoek/Comskip) (Erik Kaashoek) — The core commercial detection engine.
+-   [**comchap**](https://github.com/BrettSheleski/comchap) (Brett Sheleski) — The scripts used for DVR post-processing.
 
 The `jellyfin-server/entrypoint.sh` file includes an attribution header pointing to the NFS server project from which parts of the script were adapted. This repository is independently developed and maintained by the project owner and is not affiliated with the original authors. Please refer to the linked upstream repositories for their full documentation, source, and license terms.
