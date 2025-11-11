@@ -2,9 +2,9 @@ name: Docker Build and Publish
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "dev"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "dev"]
 
 # Grant the workflow token the permissions required to publish to GHCR
 permissions:
@@ -96,9 +96,6 @@ jobs:
           echo "build_dev=${build_dev}" >> "$GITHUB_OUTPUT"
           echo "build_any=${build_any}" >> "$GITHUB_OUTPUT"
 
-
-
-
       - name: Set image tags
         id: meta
         if: steps.decision.outputs.build_any == 'true'
@@ -106,12 +103,22 @@ jobs:
           IMAGE_BASE_SERVER="ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-server"
           IMAGE_BASE_WORKER="ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-worker"
 
-          if [ "${{ matrix.service }}" = "jellyfin-rffmpeg-server" ]; then
-            echo "tags_stable=${IMAGE_BASE_SERVER}:latest" >> "$GITHUB_OUTPUT"
-            echo "tags_dev=${IMAGE_BASE_SERVER}:dev" >> "$GITHUB_OUTPUT"
-          else
-            echo "tags_stable=${IMAGE_BASE_WORKER}:latest" >> "$GITHUB_OUTPUT"
-            echo "tags_dev=${IMAGE_BASE_WORKER}:dev" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            if [ "${{ matrix.service }}" = "jellyfin-rffmpeg-server" ]; then
+              echo "tags_stable=${IMAGE_BASE_SERVER}:${{ env.JELLYFIN_STABLE }},${IMAGE_BASE_SERVER}:latest" >> "$GITHUB_OUTPUT"
+              echo "tags_dev=${IMAGE_BASE_SERVER}:${{ env.JELLYFIN_DEV }},${IMAGE_BASE_SERVER}:dev" >> "$GITHUB_OUTPUT"
+            else
+              echo "tags_stable=${IMAGE_BASE_WORKER}:${{ env.JELLYFIN_STABLE }},${IMAGE_BASE_WORKER}:latest" >> "$GITHUB_OUTPUT"
+              echo "tags_dev=${IMAGE_BASE_WORKER}:${{ env.JELLYFIN_DEV }},${IMAGE_BASE_WORKER}:dev" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            if [ "${{ matrix.service }}" = "jellyfin-rffmpeg-server" ]; then
+              echo "tags_stable=${IMAGE_BASE_SERVER}:${{ env.JELLYFIN_STABLE }}-dev" >> "$GITHUB_OUTPUT"
+              echo "tags_dev=${IMAGE_BASE_SERVER}:${{ env.JELLYFIN_DEV }}-dev" >> "$GITHUB_OUTPUT"
+            else
+              echo "tags_stable=${IMAGE_BASE_WORKER}:${{ env.JELLYFIN_STABLE }}-dev" >> "$GITHUB_OUTPUT"
+              echo "tags_dev=${IMAGE_BASE_WORKER}:${{ env.JELLYFIN_DEV }}-dev" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Set IMAGE_BASE env
@@ -139,7 +146,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push STABLE (latest) image
+      - name: Build and push STABLE image
         if: steps.decision.outputs.build_stable == 'true'
         uses: docker/build-push-action@v6
         with:
@@ -150,7 +157,7 @@ jobs:
           build-args: |
             JELLYFIN_VERSION=${{ env.JELLYFIN_STABLE }}
 
-      - name: Build and push DEV (dev) image
+      - name: Build and push DEV image
         if: steps.decision.outputs.build_dev == 'true'
         uses: docker/build-push-action@v6
         with:
@@ -160,6 +167,16 @@ jobs:
           tags: ${{ steps.meta.outputs.tags_dev }}
           build-args: |
             JELLYFIN_VERSION=${{ env.JELLYFIN_DEV }}
+
+      - name: Cleanup build cache
+        if: always() && steps.decision.outputs.build_any == 'true'
+        run: |
+          docker buildx prune --all --force
+
+      - name: Cleanup Docker images
+        if: always() && steps.decision.outputs.build_any == 'true'
+        run: |
+          docker image prune -f
 
       - name: Print status
         if: steps.decision.outputs.build_any != 'true'
