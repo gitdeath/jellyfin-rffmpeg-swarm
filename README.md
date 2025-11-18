@@ -14,9 +14,9 @@ The architecture is composed of two primary services that communicate over a sec
 The following steps must be performed on **all nodes** in your Docker Swarm cluster to ensure they are properly configured.
 
 ### 1. OS and Hardware
--   **Operating System**: A recent Debian or Ubuntu LTS release.
+-   **Operating System**: A recent Debian or Ubuntu release.
 -   **CPU**: An Intel CPU that supports Quick Sync Video (QSV).
--   **Storage**: An SSD is highly recommended for the `/transcodes` and `/cache` directories to handle the high I/O of transcoding.
+-   **Storage**: A high-performance NVMe SSD is strongly recommended for the `/transcodes` and `/cache` directories. For best results, choose a drive with **TLC (Triple-Level Cell) NAND** and a **DRAM cache**. Video transcoding generates intense, sustained read/write I/O. Drives with a DRAM cache and higher-endurance NAND (like TLC) can handle these demanding workloads without performance degradation, preventing bottlenecks that cause stuttering or playback failure. Consumer-grade SATA SSDs or DRAM-less/QLC-based drives may not offer sufficient performance for multiple simultaneous transcodes.
 
 ### 2. Install System Dependencies
 Install the necessary packages for NFS client/server functionality and Intel hardware acceleration.
@@ -47,16 +47,6 @@ sudo chmod 775 /transcodes /cache
 ### 5. Disable AppArmor (Critical)
 AppArmor's security policies prevent the `jellyfin-server` container from acquiring the permissions needed to run its own NFS server. It must be disabled on the host.
 
-As an alternative to disabling AppArmor entirely, you can try adding the following `security_opt` to the `transcode-worker` service in your `docker-compose.yml` file. **Note:** This has not been tested.
-```yml
-services:
-  transcode-worker:
-    # ... other options
-    security_opt:
-      - apparmor:unconfined
-```
-
-If you choose not to use the `security_opt`, you can disable AppArmor on the host with the following commands:
 ```bash
 sudo systemctl stop apparmor && sudo systemctl disable apparmor
 sudo apt purge -y apparmor
@@ -65,6 +55,16 @@ sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\
 sudo update-grub
 ```
 **A reboot is required** for this change to take effect.
+
+As an alternative to disabling AppArmor entirely, you can try adding the following `security_opt` to the services in your `docker-compose.yml` file. **Note:** I have not personally tested this method.
+
+```yml
+services:
+  transcode-worker:
+    # ... other options
+    security_opt:
+      - apparmor:unconfined
+```
 
 ### 6. Configure Docker Swarm
 -   Install Docker and initialize your Swarm cluster if you haven't already.
@@ -192,7 +192,7 @@ Always test changes to ensure stability with your specific hardware.
 A key feature of this project is the NFS server running *inside* the `jellyfin-server` container. This is a deliberate design choice to solve a critical problem in distributed transcoding.
 
 -   **Why it's necessary**: When a worker transcodes a file, it writes temporary chunks and the final output to a specific path (e.g., `/transcodes/xyz.ts`). The main Jellyfin server must then be able to read from that *exact same path* to serve the file to the client. By having the server export `/transcodes` and `/cache`, we guarantee that both the server and all workers share a consistent, writable view of these directories.
--   **Performance**: For optimal performance, the `/transcodes` and `/cache` directories on the host running the `jellyfin-server` should be located on a fast, local SSD. This changes the I/O pattern for transcoded data from a costly "read from NAS, write to NAS, read from NAS" cycle to a much more efficient "read from NAS, write to local SSD, read from local SSD" workflow. This significantly reduces I/O load on your primary storage array.
+-   **Performance**: For optimal performance, the `/transcodes` and `/cache` directories on the host running the `jellyfin-server` should be located on a fast, local NVMe SSD. This changes the I/O pattern for transcoded data from a costly "read from NAS, write to NAS, read from NAS" cycle to a much more efficient "read from NAS, write to local SSD, read from local SSD" workflow. This significantly reduces I/O load on your primary storage array.
 -   **Elevated Privileges**: Mounting an NFS share from within a container requires elevated privileges. This is why the `transcode-worker` service needs `cap_add: [SYS_ADMIN]` in the compose file. This allows it to run `mount -a` and connect to the server's exports.
 -   **The `fsid` Option**: The NFS exports in the `docker-compose.yml` file include an `fsid` (File System ID) option (e.g., `fsid=1`). This is required by NFSv4 to uniquely identify each exported directory, especially when the underlying host directories (`/config`, `/transcodes`, `/cache`) might reside on different physical disks or partitions. Without unique `fsid`s, the NFS server would fail to start.
 -   **Troubleshooting**: If workers fail to start, check their logs for `mount` errors. This usually indicates a problem with network connectivity to the server container or a lack of `SYS_ADMIN` capability.
