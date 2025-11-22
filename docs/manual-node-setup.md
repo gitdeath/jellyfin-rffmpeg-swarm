@@ -57,14 +57,14 @@ Download and extract the legacy drivers to a separate location (`/opt/intel/lega
 mkdir -p /tmp/neo_legacy && cd /tmp/neo_legacy
 
 # Download
-wget https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22-0_amd64.deb
-wget https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.2_amd64.deb
+wget https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb
+wget https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb
 
 # Extract
 mkdir -p extracted_icd
-dpkg -x intel-opencl-icd_24.35.30872.22-0_amd64.deb extracted_icd
+dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb extracted_icd
 mkdir -p extracted_gmm
-dpkg -x libigdgmm12_22.5.2_amd64.deb extracted_gmm
+dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm
 
 # Install to /opt/intel/legacy-opencl
 sudo mkdir -p /opt/intel/legacy-opencl
