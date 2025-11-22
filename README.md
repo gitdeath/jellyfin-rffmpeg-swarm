@@ -24,7 +24,6 @@ Install the necessary packages for NFS client/server functionality and Intel har
 sudo apt update
 sudo apt install -y nfs-common nfs-kernel-server intel-opencl-icd
 ```
-
 ### 3. Configure Kernel and Drivers
 -   **Load Kernel Modules**: Ensure the required NFS and Intel graphics modules are loaded on boot.
     ```bash
@@ -33,10 +32,26 @@ sudo apt install -y nfs-common nfs-kernel-server intel-opencl-icd
     sudo modprobe nfsd nfs
     ```
 -   **Enable Intel QSV**: Follow the official Jellyfin documentation to enable Intel QSV, apply any necessary kernel patches, and configure Low-Power (LP) mode for your hardware.
-    -   **Jellyfin Intel Hardware Acceleration Guide**: jellyfin.org/docs/administration/hardware-acceleration/intel
+    -   **Jellyfin Intel Hardware Acceleration Guide**: https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/
     -   **Known Issues & Fixes**: https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/known-issues#intel-on-linux
 
-### 4. Create Host Directories
+### 4. OpenCL Support (Current & Legacy)
+This project supports both **Current (Gen12+)** and **Legacy (Gen8-11)** Intel GPUs simultaneously via a side-by-side driver installation.
+
+**Requirement**: You **MUST** configure OpenCL on every Swarm node (Host OS) for the hardware to be correctly initialized and accessible to the containers.
+
+1.  **Run the Setup Script**: Execute the provided script on every worker node (as root).
+    ```bash
+    chmod +x setup-node-opencl.sh
+    sudo ./setup-node-opencl.sh
+    ```
+    This script installs the Current drivers system-wide and side-loads the Legacy drivers into `/opt/intel/legacy-opencl`.
+
+2.  **Verification**:
+    -   **Host**: Run `clinfo` on the host to verify it sees your GPU.
+    -   **Container**: The containers are pre-configured to use these drivers. Their logs will print the detected OpenCL platforms at startup.
+
+### 5. Create Host Directories
 Create the directories on the host that the `jellyfin-server` container will use for its internal NFS exports.
 ```bash
 sudo mkdir -p /transcodes /cache
@@ -44,7 +59,7 @@ sudo chgrp users /transcodes /cache
 sudo chmod 775 /transcodes /cache
 ```
 
-### 5. Disable AppArmor (Critical)
+### 6. Disable AppArmor (Critical)
 AppArmor's security policies prevent the `jellyfin-server` container from acquiring the permissions needed to run its own NFS server. It must be disabled on the host.
 
 ```bash

@@ -9,6 +9,16 @@ log() {
 }
 log "Starting rffmpeg-worker container..."
 
+# --- OpenCL Verification ---
+export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"
+log "Checking OpenCL Status..."
+if command -v clinfo > /dev/null; then
+    clinfo | grep "Platform Name" || echo "No OpenCL platforms found."
+else
+    log "Warning: clinfo not found."
+fi
+log "OpenCL Check Complete."
+
 # Function to log a critical error and exit
 bail() {
   log "CRITICAL: $1"

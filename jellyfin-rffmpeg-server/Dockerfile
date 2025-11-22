@@ -9,6 +9,83 @@ ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 ENV TMPDIR=/cache/temp 
 
+# ==============================================================================
+# OpenCL Support (Current & Legacy)
+# ==============================================================================
+
+# 1. Install Prerequisites
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg2 \
+    clinfo \
+    binutils \
+    ca-certificates \
+    libnuma1 \
+    ocl-icd-libopencl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+WORKDIR /tmp/neo
+
+# ==============================================================================
+# PHASE 1: Install CURRENT Drivers (Gen12+) - System Wide
+# ==============================================================================
+
+# Download the specific version mentioned in your prompt (25.44.36015.5)
+RUN wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-core-2_2.22.2+20121_amd64.deb && \
+    wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-opencl-2_2.22.2+20121_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-ocloc_25.44.36015.5-0_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-opencl-icd_25.44.36015.5-0_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libigdgmm12_22.8.2_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libze-intel-gpu1_25.44.36015.5-0_amd64.deb
+
+# Install them
+RUN dpkg -i *.deb || apt-get install -f -y
+
+# Cleanup Current Debrs
+RUN rm *.deb
+
+# ==============================================================================
+# PHASE 2: Install LEGACY Drivers (Gen8, Gen9, Gen11) - Side-by-Side
+# ==============================================================================
+# We extract these to a custom folder so they don't overwrite the new drivers.
+# We use release 24.35.30872.22 which is the designated legacy branch tip.
+
+WORKDIR /tmp/legacy_neo
+
+# Download Legacy OpenCL ICD and Legacy GMM (Memory Manager)
+# Note: We need the legacy GMM because the new GMM might have ABI changes incompatible with the old driver.
+RUN wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22-0_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.2_amd64.deb
+
+# Extract contents (dpkg -x) instead of installing (dpkg -i)
+RUN mkdir -p extracted_icd && dpkg -x intel-opencl-icd_24.35.30872.22-0_amd64.deb extracted_icd && \
+    mkdir -p extracted_gmm && dpkg -x libigdgmm12_22.5.2_amd64.deb extracted_gmm
+
+# Move the critical libraries to a permanent location
+RUN mkdir -p /opt/intel/legacy-opencl && \
+    # Copy the Legacy Driver
+    cp extracted_icd/usr/lib/x86_64-linux-gnu/intel-opencl/libigdrcl.so /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
+    # Copy the Legacy GMM
+    cp extracted_gmm/usr/lib/x86_64-linux-gnu/libigdgmm.so.12 /opt/intel/legacy-opencl/
+
+# Cleanup
+WORKDIR /
+RUN rm -rf /tmp/legacy_neo
+
+# ==============================================================================
+# PHASE 3: Configuration & Binding
+# ==============================================================================
+
+# 1. Register the Legacy Driver with the OpenCL Loader
+# The loader scans /etc/OpenCL/vendors/*.icd. 
+# We point it to our renamed legacy library.
+RUN echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd
+
+# 2. Setup Environment Variables
+# We must add the legacy folder to LD_LIBRARY_PATH so the legacy driver can find its specific GMM library.
+ENV LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH" 
+
 # Installs all system packages, configures rffmpeg, and sets up DVR tools in a single layer.
 # This approach is used to minimize the final image size.
 RUN apt-get -y update --fix-missing && \
