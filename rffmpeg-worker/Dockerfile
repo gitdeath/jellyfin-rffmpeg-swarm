@@ -53,7 +53,8 @@ RUN wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v
     wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libze-intel-gpu1_25.44.36015.5-0_amd64.deb
 
 # Install them
-RUN dpkg -i *.deb || apt-get install -f -y
+RUN dpkg -i *.deb || apt-get install -f -y && \
+    apt-mark manual intel-opencl-icd intel-igc-core-2 intel-igc-opencl-2 intel-ocloc libigdgmm12 libze-intel-gpu1
 
 # Cleanup Current Debrs
 RUN rm *.deb
