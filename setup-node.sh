@@ -121,8 +121,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         if ! grep -q "apparmor=0" /etc/default/grub; then
             sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=0"/' /etc/default/grub
             update-grub
+            REBOOT_REQUIRED=true
         else
-            echo "AppArmor already disabled in Grub."
+            echo "AppArmor already disabled in Grub config."
         fi
     fi
 else
@@ -131,5 +132,14 @@ fi
 
 echo "=================================================================="
 echo " Setup Complete!"
-echo " Please reboot your node to finalize changes."
+
+# Check if reboot is actually needed
+if [ "$REBOOT_REQUIRED" = true ]; then
+    echo " WARNING: Kernel parameters changed. A REBOOT IS REQUIRED."
+elif grep -q "apparmor=0" /proc/cmdline; then
+    echo " System is properly configured. No reboot required."
+else
+    echo " WARNING: AppArmor is NOT disabled in the running kernel."
+    echo " Please reboot your node to apply changes."
+fi
 echo "=================================================================="
