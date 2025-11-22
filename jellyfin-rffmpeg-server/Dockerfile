@@ -63,10 +63,10 @@ RUN mkdir -p extracted_icd && dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_am
 
 # Move the critical libraries to a permanent location
 RUN mkdir -p /opt/intel/legacy-opencl && \
-    # Copy the Legacy Driver
-    cp extracted_icd/usr/lib/x86_64-linux-gnu/intel-opencl/libigdrcl.so /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
-    # Copy the Legacy GMM
-    cp extracted_gmm/usr/lib/x86_64-linux-gnu/libigdgmm.so.12 /opt/intel/legacy-opencl/
+    # Copy the Legacy Driver (robust find)
+    cp $(find extracted_icd -name "libigdrcl*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
+    # Copy the Legacy GMM (robust find)
+    cp $(find extracted_gmm -name "libigdgmm*.so*" | head -n 1) /opt/intel/legacy-opencl/
 
 # Cleanup
 WORKDIR /
