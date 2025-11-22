@@ -54,12 +54,12 @@ WORKDIR /tmp/legacy_neo
 
 # Download Legacy OpenCL ICD and Legacy GMM (Memory Manager)
 # Note: We need the legacy GMM because the new GMM might have ABI changes incompatible with the old driver.
-RUN wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22-0_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.2_amd64.deb
+RUN wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb
 
 # Extract contents (dpkg -x) instead of installing (dpkg -i)
-RUN mkdir -p extracted_icd && dpkg -x intel-opencl-icd_24.35.30872.22-0_amd64.deb extracted_icd && \
-    mkdir -p extracted_gmm && dpkg -x libigdgmm12_22.5.2_amd64.deb extracted_gmm
+RUN mkdir -p extracted_icd && dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb extracted_icd && \
+    mkdir -p extracted_gmm && dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm
 
 # Move the critical libraries to a permanent location
 RUN mkdir -p /opt/intel/legacy-opencl && \
