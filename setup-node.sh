@@ -106,28 +106,39 @@ echo 'export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"' > /etc
 chmod 644 /etc/profile.d/intel-opencl.sh
 
 # 7. AppArmor
-echo "[7/7] Disabling AppArmor..."
-echo "WARNING: This will disable AppArmor and require a reboot."
-read -p "Do you want to proceed with disabling AppArmor? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    systemctl stop apparmor 2>/dev/null || true
-    systemctl disable apparmor 2>/dev/null || true
-    apt-get purge -y -qq apparmor
-    
-    # Update Grub
-    if [ -f /etc/default/grub ]; then
-        # Check if apparmor=0 is already present to avoid duplication
-        if ! grep -q "apparmor=0" /etc/default/grub; then
-            sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=0"/' /etc/default/grub
-            update-grub
-            REBOOT_REQUIRED=true
-        else
-            echo "AppArmor already disabled in Grub config."
+echo "[7/7] Configuring AppArmor..."
+
+# Check if AppArmor needs to be disabled
+APPARMOR_ACTIVE=false
+if systemctl is-active --quiet apparmor; then APPARMOR_ACTIVE=true; fi
+if ! grep -q "apparmor=0" /proc/cmdline; then APPARMOR_ACTIVE=true; fi
+
+if [ "$APPARMOR_ACTIVE" = true ]; then
+    echo "WARNING: AppArmor is currently enabled. It must be disabled for the NFS server to work."
+    echo "This action will require a reboot."
+    read -p "Do you want to proceed with disabling AppArmor? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        systemctl stop apparmor 2>/dev/null || true
+        systemctl disable apparmor 2>/dev/null || true
+        apt-get purge -y -qq apparmor
+        
+        # Update Grub
+        if [ -f /etc/default/grub ]; then
+            # Check if apparmor=0 is already present to avoid duplication
+            if ! grep -q "apparmor=0" /etc/default/grub; then
+                sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=0"/' /etc/default/grub
+                update-grub
+                REBOOT_REQUIRED=true
+            else
+                echo "AppArmor already disabled in Grub config."
+            fi
         fi
+    else
+        echo "Skipping AppArmor disable. Note: This may cause permission issues for the NFS server."
     fi
 else
-    echo "Skipping AppArmor disable. Note: This may cause permission issues for the NFS server."
+    echo "AppArmor is already disabled."
 fi
 
 echo "=================================================================="
