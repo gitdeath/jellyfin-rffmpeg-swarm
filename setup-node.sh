@@ -16,6 +16,9 @@ echo "[1/7] Installing System Dependencies..."
 apt-get update -qq
 apt-get install -y -qq nfs-common nfs-kernel-server intel-opencl-icd clinfo binutils ocl-icd-libopencl1 wget gnupg2 ca-certificates libnuma1
 
+# Cleanup previous runs to prevent package conflicts
+rm -rf /tmp/neo_current /tmp/neo_legacy
+
 # 2. Configure Kernel Modules
 echo "[2/7] Configuring Kernel Modules..."
 if ! grep -q "nfsd" /etc/modules; then echo "nfsd" >> /etc/modules; fi
@@ -33,38 +36,60 @@ chmod 775 /transcodes /cache
 echo "[4/7] Installing OpenCL Drivers (Current + Legacy)..."
 
 # --- Start OpenCL Logic ---
-# 2. Install CURRENT Drivers (Gen12+)
-mkdir -p /tmp/neo_current
-cd /tmp/neo_current
 
-wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-core-2_2.22.2+20121_amd64.deb
-wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-opencl-2_2.22.2+20121_amd64.deb
-wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-ocloc_25.44.36015.5-0_amd64.deb
-wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-opencl-icd_25.44.36015.5-0_amd64.deb
-wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libigdgmm12_22.8.2_amd64.deb
-wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libze-intel-gpu1_25.44.36015.5-0_amd64.deb
+# 2. Install CURRENT Drivers (Gen12+) via Apt Repository
+# This ensures the correct version is installed for the running OS (Ubuntu 22.04 vs 24.04)
+echo "Adding Intel Compute Runtime Apt Repository..."
+mkdir -p /etc/apt/keyrings
+wget -qO - https://repositories.intel.com/gpu/intel-graphics.key | gpg --dearmor --yes -o /etc/apt/keyrings/intel-graphics.gpg
+echo "deb [arch=amd64,i386 signed-by=/etc/apt/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu $(lsb_release -cs) client" | tee /etc/apt/sources.list.d/intel-gpu-$(lsb_release -cs).list
 
-dpkg -i *.deb || apt-get install -f -y
+apt-get update -qq
+# Install the compute runtime and level-zero
+apt-get install -y -qq intel-opencl-icd intel-level-zero-gpu level-zero
 
 # 3. Install LEGACY Drivers (Gen8-11) - Side-loaded
+# Ensure clean state
+rm -rf /tmp/neo_legacy
 mkdir -p /tmp/neo_legacy
 cd /tmp/neo_legacy
 
 # Download
-# Download
-wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb
-wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb
+echo "Downloading Legacy Drivers..."
+wget https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb
+wget https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb
 
 # Extract
+echo "Extracting Legacy Drivers..."
 mkdir -p extracted_icd
-dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb extracted_icd
+dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb extracted_icd || { echo "dpkg -x failed for ICD"; exit 1; }
 mkdir -p extracted_gmm
-dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm
+dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm || { echo "dpkg -x failed for GMM"; exit 1; }
 
 # Install to /opt/intel/legacy-opencl
 mkdir -p /opt/intel/legacy-opencl
-cp extracted_icd/usr/lib/x86_64-linux-gnu/intel-opencl/libigdrcl.so /opt/intel/legacy-opencl/libigdrcl_legacy.so
-cp extracted_gmm/usr/lib/x86_64-linux-gnu/libigdgmm.so.12 /opt/intel/legacy-opencl/
+
+# Use find to locate the files robustly, as paths may vary between package versions
+# Use wildcards to catch .so, .so.1, _legacy1.so, etc.
+ICD_FILE=$(find extracted_icd -name "libigdrcl*.so*" | head -n 1)
+GMM_FILE=$(find extracted_gmm -name "libigdgmm*.so*" | head -n 1)
+
+if [ -z "$ICD_FILE" ]; then
+    echo "ERROR: Could not find libigdrcl*.so* in extracted legacy package."
+    echo "Contents of extracted_icd:"
+    find extracted_icd
+    exit 1
+fi
+
+if [ -z "$GMM_FILE" ]; then
+    echo "ERROR: Could not find libigdgmm*.so* in extracted legacy package."
+    echo "Contents of extracted_gmm:"
+    find extracted_gmm
+    exit 1
+fi
+
+cp -P "$ICD_FILE" /opt/intel/legacy-opencl/libigdrcl_legacy.so
+cp -P "$GMM_FILE" /opt/intel/legacy-opencl/
 
 # 4. Configuration
 echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd

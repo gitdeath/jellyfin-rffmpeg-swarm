@@ -68,8 +68,13 @@ dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm
 
 # Install to /opt/intel/legacy-opencl
 sudo mkdir -p /opt/intel/legacy-opencl
-sudo cp extracted_icd/usr/lib/x86_64-linux-gnu/intel-opencl/libigdrcl.so /opt/intel/legacy-opencl/libigdrcl_legacy.so
-sudo cp extracted_gmm/usr/lib/x86_64-linux-gnu/libigdgmm.so.12 /opt/intel/legacy-opencl/
+
+# Use find to locate the files robustly
+ICD_FILE=$(find extracted_icd -name "libigdrcl*.so*" | head -n 1)
+GMM_FILE=$(find extracted_gmm -name "libigdgmm*.so*" | head -n 1)
+
+sudo cp "$ICD_FILE" /opt/intel/legacy-opencl/libigdrcl_legacy.so
+sudo cp "$GMM_FILE" /opt/intel/legacy-opencl/
 
 # Clean up
 cd / && rm -rf /tmp/neo_legacy
