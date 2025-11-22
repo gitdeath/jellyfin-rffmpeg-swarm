@@ -12,7 +12,7 @@ echo " Jellyfin Swarm Node Setup"
 echo "=================================================================="
 
 # 1. Install Dependencies
-echo "[1/7] Installing System Dependencies..."
+echo "[1/8] Installing System Dependencies..."
 apt-get update -qq
 apt-get install -y -qq nfs-common nfs-kernel-server intel-opencl-icd clinfo binutils ocl-icd-libopencl1 wget gnupg2 ca-certificates libnuma1
 
@@ -20,20 +20,20 @@ apt-get install -y -qq nfs-common nfs-kernel-server intel-opencl-icd clinfo binu
 rm -rf /tmp/neo_current /tmp/neo_legacy
 
 # 2. Configure Kernel Modules
-echo "[2/7] Configuring Kernel Modules..."
+echo "[2/8] Configuring Kernel Modules..."
 if ! grep -q "nfsd" /etc/modules; then echo "nfsd" >> /etc/modules; fi
 if ! grep -q "nfs" /etc/modules; then echo "nfs" >> /etc/modules; fi
 modprobe nfsd
 modprobe nfs
 
 # 3. Create Directories
-echo "[3/7] Creating Host Directories..."
+echo "[3/8] Creating Host Directories..."
 mkdir -p /transcodes /cache
 chgrp users /transcodes /cache
 chmod 775 /transcodes /cache
 
 # 4. OpenCL Drivers (Current + Legacy)
-echo "[4/7] Installing OpenCL Drivers (Current + Legacy)..."
+echo "[4/8] Installing OpenCL Drivers (Current + Legacy)..."
 
 # --- Start OpenCL Logic ---
 
@@ -106,7 +106,7 @@ echo 'export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"' > /etc
 chmod 644 /etc/profile.d/intel-opencl.sh
 
 # 7. AppArmor
-echo "[7/7] Configuring AppArmor..."
+echo "[7/8] Configuring AppArmor..."
 
 # Check if AppArmor needs to be disabled
 APPARMOR_ACTIVE=false
@@ -141,6 +141,16 @@ else
     echo "AppArmor is already disabled."
 fi
 
+# 8. User Groups
+echo "[8/8] Configuring User Groups..."
+if [ -n "$SUDO_USER" ]; then
+    echo "Adding user '$SUDO_USER' to 'render' and 'video' groups..."
+    usermod -aG render "$SUDO_USER" || true
+    usermod -aG video "$SUDO_USER" || true
+else
+    echo "WARNING: Could not detect SUDO_USER. Please manually add your user to 'render' and 'video' groups."
+fi
+
 echo "=================================================================="
 echo " Setup Complete!"
 
@@ -149,6 +159,10 @@ if [ "$REBOOT_REQUIRED" = true ]; then
     echo " WARNING: Kernel parameters changed. A REBOOT IS REQUIRED."
 elif grep -q "apparmor=0" /proc/cmdline; then
     echo " System is properly configured. No reboot required."
+    if [ -n "$SUDO_USER" ]; then
+        echo " NOTE: You must LOG OUT and LOG BACK IN for group changes to take effect."
+        echo "       Alternatively, run: 'newgrp render' to apply immediately."
+    fi
 else
     echo " WARNING: AppArmor is NOT disabled in the running kernel."
     echo " Please reboot your node to apply changes."
