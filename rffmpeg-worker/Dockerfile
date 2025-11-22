@@ -5,7 +5,7 @@ ARG JELLYFIN_VERSION=10.10.7
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get -y install --no-install-recommends curl gnupg locales openssh-server nfs-common netbase iputils-ping fontconfig intel-opencl-icd ca-certificates && \
+    apt-get -y install --no-install-recommends curl gnupg locales openssh-server nfs-common netbase iputils-ping fontconfig ca-certificates && \
     sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen && \
     # Add jellyfin repo using the modern signed-by method
