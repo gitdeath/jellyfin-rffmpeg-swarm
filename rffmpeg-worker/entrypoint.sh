@@ -23,15 +23,6 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
-# --- OpenCL Verification ---
-export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"
-log "Checking OpenCL Status..."
-if command -v clinfo > /dev/null; then
-    clinfo | grep "Platform Name" || echo "No OpenCL platforms found."
-else
-    log "Warning: clinfo not found."
-fi
-log "OpenCL Check Complete."
 
 # Function to log a critical error and exit
 bail() {
@@ -61,6 +52,16 @@ if [ -e /dev/dri/renderD128 ]; then
 else
     log "Warning: /dev/dri/renderD128 not found. Skipping GPU group setup."
 fi
+
+# --- OpenCL Verification ---
+export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"
+log "Checking OpenCL Status..."
+if command -v clinfo > /dev/null; then
+    clinfo | grep "Platform Name" || echo "No OpenCL platforms found."
+else
+    log "Warning: clinfo not found."
+fi
+log "OpenCL Check Complete."
 
 # Determine the NFS server hostname based on the worker's own hostname.
 # If the worker's hostname contains "-dev", it will connect to the dev server.
