@@ -82,7 +82,12 @@ Register the legacy driver with the system's OpenCL loader.
 sudo sh -c 'echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd'
 ```
 
-**Note**: When running applications on the host, you must export `LD_LIBRARY_PATH=/opt/intel/legacy-opencl:$LD_LIBRARY_PATH` for the legacy driver to work. The Docker containers handle this automatically.
+### Step 4.4: Configure Environment Variables
+Create a profile script to ensure the legacy driver is found by applications on the host.
+
+```bash
+sudo sh -c 'echo "export LD_LIBRARY_PATH=/opt/intel/legacy-opencl:\$LD_LIBRARY_PATH" > /etc/profile.d/intel-opencl.sh'
+```
 
 ## 5. Disable AppArmor (Critical)
 AppArmor's security policies prevent the `jellyfin-server` container from acquiring the permissions needed to run its own NFS server. It must be disabled on the host.

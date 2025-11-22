@@ -12,25 +12,25 @@ echo " Jellyfin Swarm Node Setup"
 echo "=================================================================="
 
 # 1. Install Dependencies
-echo "[1/6] Installing System Dependencies..."
+echo "[1/7] Installing System Dependencies..."
 apt-get update -qq
 apt-get install -y -qq nfs-common nfs-kernel-server intel-opencl-icd clinfo binutils ocl-icd-libopencl1 wget gnupg2 ca-certificates libnuma1
 
 # 2. Configure Kernel Modules
-echo "[2/6] Configuring Kernel Modules..."
+echo "[2/7] Configuring Kernel Modules..."
 if ! grep -q "nfsd" /etc/modules; then echo "nfsd" >> /etc/modules; fi
 if ! grep -q "nfs" /etc/modules; then echo "nfs" >> /etc/modules; fi
 modprobe nfsd
 modprobe nfs
 
 # 3. Create Directories
-echo "[3/6] Creating Host Directories..."
+echo "[3/7] Creating Host Directories..."
 mkdir -p /transcodes /cache
 chgrp users /transcodes /cache
 chmod 775 /transcodes /cache
 
 # 4. OpenCL Drivers (Current + Legacy)
-echo "[4/6] Installing OpenCL Drivers (Current + Legacy)..."
+echo "[4/7] Installing OpenCL Drivers (Current + Legacy)..."
 
 # --- Start OpenCL Logic ---
 # 2. Install CURRENT Drivers (Gen12+)
@@ -69,15 +69,19 @@ cp extracted_gmm/usr/lib/x86_64-linux-gnu/libigdgmm.so.12 /opt/intel/legacy-open
 # 4. Configuration
 echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd
 
-# 5. Clean up
+# 6. Clean up
 rm -rf /tmp/neo_current /tmp/neo_legacy
 # --- End OpenCL Logic ---
 
 echo "OpenCL Drivers Installed."
-echo "IMPORTANT: You must export LD_LIBRARY_PATH=/opt/intel/legacy-opencl:\$LD_LIBRARY_PATH for the legacy driver to work."
 
-# 5. AppArmor
-echo "[5/6] Disabling AppArmor..."
+# 5. Configure Environment Variables
+echo "Configuring LD_LIBRARY_PATH..."
+echo 'export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"' > /etc/profile.d/intel-opencl.sh
+chmod 644 /etc/profile.d/intel-opencl.sh
+
+# 7. AppArmor
+echo "[7/7] Disabling AppArmor..."
 echo "WARNING: This will disable AppArmor and require a reboot."
 read -p "Do you want to proceed with disabling AppArmor? (y/n) " -n 1 -r
 echo

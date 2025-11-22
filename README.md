@@ -1,3 +1,58 @@
+# Jellyfin RFFMPEG Swarm
+
+This project creates a scalable, distributed Jellyfin media server using Docker Swarm. It solves the common challenge of CPU-intensive video transcoding by offloading the work from the main Jellyfin server to a cluster of dedicated worker nodes.
+
+## Overview
+
+The architecture is composed of two primary services that communicate over a secure Docker overlay network:
+
+-   **`jellyfin-server`**: The main Jellyfin instance. It does not perform transcodes itself but instead delegates them to available workers via SSH using `rffmpeg`. This service also runs an integrated **NFS server** to share the `/transcodes` and `/cache` directories, ensuring all nodes have access to the same temporary files. **Logs for `rffmpeg` are automatically viewable in the Jellyfin Dashboard under the "Logs" section.**
+-   **`transcode-worker`**: The workhorses of the cluster. These are lightweight, scalable containers that listen for transcoding jobs from the server. You can add or remove workers on-the-fly to match your expected transcoding load.
+
+## Host Setup Guide
+
+The following steps must be performed on **all nodes** in your Docker Swarm cluster to ensure they are properly configured.
+
+### 1. OS and Hardware
+-   **Operating System**: A recent Debian or Ubuntu release.
+-   **CPU**: An Intel CPU that supports Quick Sync Video (QSV).
+-   **Storage**: A high-performance NVMe SSD is strongly recommended for the `/transcodes` and `/cache` directories. For best results, choose a drive with **TLC (Triple-Level Cell) NAND** and a **DRAM cache**. Video transcoding generates intense, sustained read/write I/O. Drives with a DRAM cache and higher-endurance NAND (like TLC) can handle these demanding workloads without performance degradation, preventing bottlenecks that cause stuttering or playback failure. Consumer-grade SATA SSDs or DRAM-less/QLC-based drives may not offer sufficient performance for multiple simultaneous transcodes.
+
+### 2. Configure Node (Required)
+You must configure **all nodes** in your Swarm cluster (both managers and workers) to support the necessary kernel modules, NFS directories, and OpenCL drivers.
+
+You can choose between an **Automated** or **Manual** setup.
+
+#### Option A: Automated Setup (Recommended)
+We provide a script that handles all dependencies, kernel modules, OpenCL drivers (Current & Legacy), and AppArmor configuration.
+
+1.  **Download and Run**:
+    ```bash
+    wget https://raw.githubusercontent.com/gitdeath/jellyfin-rffmpeg-swarm/main/setup-node.sh
+    chmod +x setup-node.sh
+    sudo ./setup-node.sh
+    ```
+2.  **Reboot**: A reboot is required to finalize the AppArmor and kernel changes.
+
+#### Option B: Manual Setup
+If you prefer to configure the host manually or need to troubleshoot specific steps, please refer to the detailed guide:
+
+[**📄 Manual Node Setup Guide**](docs/manual-node-setup.md)
+
+### 3. Configure Docker Swarm
+-   Install Docker and initialize your Swarm cluster if you haven't already.
+-   Deploy the `device-mapping-manager` on each node. This utility ensures that GPU devices (`/dev/dri`) are correctly mapped to containers across the Swarm.
+    ```bash
+    docker run -d --restart always --name device-manager --privileged \
+      --cgroupns=host --pid=host --userns=host \
+      -v /sys:/host/sys -v /var/run/docker.sock:/var/run/docker.sock \
+      ghcr.io/gitdeath/device-mapping-manager:master
+    ```
+
+## Production Deployment
+
+Follow these steps on your Docker Swarm manager node.
+
 ### 1. Prepare Deployment Files
 Create a directory for your stack and download the compose file.
 ```bash
