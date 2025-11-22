@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -y \
     gnupg2 \
     clinfo \
     binutils \
-    ca-certificates \
     libnuma1 \
     ocl-icd-libopencl1 \
     && rm -rf /var/lib/apt/lists/*
@@ -84,37 +83,37 @@ RUN echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/in
 
 # 2. Setup Environment Variables
 # We must add the legacy folder to LD_LIBRARY_PATH so the legacy driver can find its specific GMM library.
-ENV LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH" 
+ENV LD_LIBRARY_PATH="/opt/intel/legacy-opencl" 
 
 # Installs all system packages, configures rffmpeg, and sets up DVR tools in a single layer.
 # This approach is used to minimize the final image size.
 RUN apt-get -y update --fix-missing && \
     apt-get install -y --no-install-recommends \
-        openssh-client \
-        cron \
-        python3-click \
-        python3-yaml \
-        wget \
-        git \
-        # Comskip build dependencies
-        build-essential \
-        pkg-config \
-        autoconf \
-        automake \
-        libtool \
-        libavformat-dev \
-        libargtable2-dev \
-        libavutil-dev \
-        libavcodec-dev \
-        libswscale-dev \
-        nfs-common \
-        nfs-kernel-server \
-        libcap2-bin \
-        kmod \
-        procps \
-        netbase \
-        iputils-ping \
-        locales \
+    openssh-client \
+    cron \
+    python3-click \
+    python3-yaml \
+    wget \
+    git \
+    # Comskip build dependencies
+    build-essential \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    libavformat-dev \
+    libargtable2-dev \
+    libavutil-dev \
+    libavcodec-dev \
+    libswscale-dev \
+    nfs-common \
+    nfs-kernel-server \
+    libcap2-bin \
+    kmod \
+    procps \
+    netbase \
+    iputils-ping \
+    locales \
     && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen && \
     # Download the rffmpeg configuration template and customize it for this project's paths and user.
@@ -147,7 +146,7 @@ RUN apt-get -y update --fix-missing && \
     make install && \
     cd / && \
     printf "edl_out=1\noutput_edl=1\noutput_to_stdout=1\nverbose=10\n"  > /etc/comskip.ini && \
-# Removes build-time dependencies (like git) and clears apt caches to reduce image size.
+    # Removes build-time dependencies (like git) and clears apt caches to reduce image size.
     rm -rf /tmp/comchap_src /tmp/comskip_src && \
     apt-get purge -y --auto-remove wget git build-essential pkg-config autoconf automake && \
     apt-get autoremove -y --purge && \
@@ -177,11 +176,11 @@ RUN \
     chmod 700 /home/transcodessh/.ssh /rffmpeg/.ssh && \
     chgrp users /transcodes /cache /cache/temp /config /livetv && \
     sed -i \
-        -e 's;#   IdentityFile ~/.ssh/id_rsa;   IdentityFile /run/rffmpeg/.ssh/id_rsa;' \
-        -e 's;#   UserKnownHostsFile ~/.ssh/known_hosts.d/%k;   UserKnownHostsFile /dev/null ;' \
-        -e 's;#   StrictHostKeyChecking ask;    StrictHostKeyChecking no;' \
-        /etc/ssh/ssh_config
-    
+    -e 's;#   IdentityFile ~/.ssh/id_rsa;   IdentityFile /run/rffmpeg/.ssh/id_rsa;' \
+    -e 's;#   UserKnownHostsFile ~/.ssh/known_hosts.d/%k;   UserKnownHostsFile /dev/null ;' \
+    -e 's;#   StrictHostKeyChecking ask;    StrictHostKeyChecking no;' \
+    /etc/ssh/ssh_config
+
 # Copies the container's operational scripts and sets up a cron job.
 # The cron job periodically runs the host scaling script to discover and manage worker nodes.
 COPY --chown=transcodessh:users rffmpeg-hostscale.sh /rffmpeg-hostscale.sh

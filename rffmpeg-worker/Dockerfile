@@ -33,7 +33,6 @@ RUN apt-get update && apt-get install -y \
     gnupg2 \
     clinfo \
     binutils \
-    ca-certificates \
     libnuma1 \
     ocl-icd-libopencl1 \
     && rm -rf /var/lib/apt/lists/*
@@ -98,7 +97,7 @@ RUN echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/in
 
 # 2. Setup Environment Variables
 # We must add the legacy folder to LD_LIBRARY_PATH so the legacy driver can find its specific GMM library.
-ENV LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"
+ENV LD_LIBRARY_PATH="/opt/intel/legacy-opencl"
 
 # Create directories, set permissions, and define NFS mounts for the entrypoint.
 RUN (getent group users || groupadd -g 100 users) && \
