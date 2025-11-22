@@ -74,7 +74,7 @@ ICD_FILE=$(find extracted_icd -name "libigdrcl*.so*" | head -n 1)
 GMM_FILE=$(find extracted_gmm -name "libigdgmm*.so*" | head -n 1)
 
 sudo cp "$ICD_FILE" /opt/intel/legacy-opencl/libigdrcl_legacy.so
-sudo cp "$GMM_FILE" /opt/intel/legacy-opencl/
+sudo cp "$GMM_FILE" /opt/intel/legacy-opencl/libigdgmm.so.12
 
 # Clean up
 cd / && rm -rf /tmp/neo_legacy

@@ -89,7 +89,7 @@ if [ -z "$GMM_FILE" ]; then
 fi
 
 cp -P "$ICD_FILE" /opt/intel/legacy-opencl/libigdrcl_legacy.so
-cp -P "$GMM_FILE" /opt/intel/legacy-opencl/
+cp -P "$GMM_FILE" /opt/intel/legacy-opencl/libigdgmm.so.12
 
 # 4. Configuration
 echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd
