@@ -155,7 +155,7 @@ RUN apt-get update && apt-get install -y curl && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-level-zero-gpu_1.3.30872.22_amd64.deb && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22_amd64.deb && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb && \
-    dpkg -i *.deb || apt-get install -f -y && \
+    apt-get install -y ./*.deb && \
     apt-mark manual intel-igc-core intel-igc-opencl intel-level-zero-gpu intel-opencl-icd libigdgmm12 && \
     rm *.deb
 
@@ -169,7 +169,7 @@ RUN curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.
     cp $(find extracted_icd -name "libigdrcl*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
     cp $(find extracted_gmm -name "libigdgmm*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdgmm.so.12 && \
     rm -rf /tmp/legacy_neo /tmp/neo && \
-    apt-get purge -y --auto-remove curl && \
+    apt-get purge -y curl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
