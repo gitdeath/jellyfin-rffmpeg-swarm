@@ -37,55 +37,6 @@ RUN apt-get update && apt-get install -y \
     ocl-icd-libopencl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories
-WORKDIR /tmp/neo
-
-# ==============================================================================
-# PHASE 1: Install CURRENT Drivers (Gen12+) - System Wide
-# ==============================================================================
-
-# Download the specific version mentioned in your prompt (25.44.36015.5)
-RUN wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-core-2_2.22.2+20121_amd64.deb && \
-    wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-opencl-2_2.22.2+20121_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-ocloc_25.44.36015.5-0_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-opencl-icd_25.44.36015.5-0_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libigdgmm12_22.8.2_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libze-intel-gpu1_25.44.36015.5-0_amd64.deb
-
-# Install them
-RUN dpkg -i *.deb || apt-get install -f -y && \
-    apt-mark manual intel-opencl-icd intel-igc-core-2 intel-igc-opencl-2 intel-ocloc libigdgmm12 libze-intel-gpu1
-
-# Cleanup Current Debrs
-RUN rm *.deb
-
-# ==============================================================================
-# PHASE 2: Install LEGACY Drivers (Gen8, Gen9, Gen11) - Side-by-Side
-# ==============================================================================
-# We extract these to a custom folder so they don't overwrite the new drivers.
-# We use release 24.35.30872.22 which is the designated legacy branch tip.
-
-WORKDIR /tmp/legacy_neo
-
-# Download Legacy OpenCL ICD and Legacy GMM (Memory Manager)
-# Note: We need the legacy GMM because the new GMM might have ABI changes incompatible with the old driver.
-RUN wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb
-
-# Extract contents (dpkg -x) instead of installing (dpkg -i)
-RUN mkdir -p extracted_icd && dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb extracted_icd && \
-    mkdir -p extracted_gmm && dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm
-
-# Move the critical libraries to a permanent location
-RUN mkdir -p /opt/intel/legacy-opencl && \
-    # Copy the Legacy Driver (robust find)
-    cp $(find extracted_icd -name "libigdrcl*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
-    # Copy the Legacy GMM (robust find) - Ensure it is named libigdgmm.so.12
-    cp $(find extracted_gmm -name "libigdgmm*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdgmm.so.12
-
-# Cleanup
-WORKDIR /
-RUN rm -rf /tmp/legacy_neo
 
 # ==============================================================================
 # PHASE 3: Configuration & Binding
@@ -114,6 +65,34 @@ RUN useradd -u 7001 -g users -m transcodessh && \
 RUN echo 'umask 002' >> /etc/profile
 
 EXPOSE 22
+
+# ==============================================================================
+# PHASE 4: Install Drivers (Moved to end to avoid autoremove)
+# ==============================================================================
+WORKDIR /tmp/neo
+
+# Install Current Drivers (Gen12+)
+RUN curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-core-2_2.22.2+20121_amd64.deb && \
+    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-opencl-2_2.22.2+20121_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-ocloc_25.44.36015.5-0_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-opencl-icd_25.44.36015.5-0_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libigdgmm12_22.8.2_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libze-intel-gpu1_25.44.36015.5-0_amd64.deb && \
+    dpkg -i *.deb || apt-get install -f -y && \
+    rm *.deb
+
+# Install Legacy Drivers (Gen8-11)
+WORKDIR /tmp/legacy_neo
+RUN curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb && \
+    mkdir -p extracted_icd && dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb extracted_icd && \
+    mkdir -p extracted_gmm && dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm && \
+    mkdir -p /opt/intel/legacy-opencl && \
+    cp $(find extracted_icd -name "libigdrcl*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
+    cp $(find extracted_gmm -name "libigdgmm*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdgmm.so.12 && \
+    rm -rf /tmp/legacy_neo /tmp/neo
+
+WORKDIR /
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
