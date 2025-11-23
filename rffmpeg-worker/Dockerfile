@@ -75,8 +75,8 @@ WORKDIR /tmp/neo
 # Install Current Drivers (Gen12+)
 # We use 24.35.30872.22 because newer versions (25.x) require libc6 >= 2.38, which is not available in Debian Bookworm.
 RUN apt-get update && apt-get install -y curl && \
-    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v1.0.177/intel-igc-core_1.0.177_amd64.deb && \
-    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v1.0.177/intel-igc-opencl_1.0.177_amd64.deb && \
+    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17537.20/intel-igc-core_1.0.17537.20_amd64.deb && \
+    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17537.20/intel-igc-opencl_1.0.17537.20_amd64.deb && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-level-zero-gpu_1.3.30872.22_amd64.deb && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22_amd64.deb && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb && \
