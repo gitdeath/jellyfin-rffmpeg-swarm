@@ -80,7 +80,7 @@ RUN apt-get update && apt-get install -y curl && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-level-zero-gpu_1.3.30872.22_amd64.deb && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22_amd64.deb && \
     curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb && \
-    apt-get install -y ./*.deb && \
+    apt-get install -y --allow-downgrades ./*.deb && \
     apt-mark manual intel-igc-core intel-igc-opencl intel-level-zero-gpu intel-opencl-icd libigdgmm12 && \
     rm *.deb
 
