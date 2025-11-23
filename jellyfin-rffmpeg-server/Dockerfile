@@ -31,7 +31,8 @@ RUN apt-get update && apt-get install -y \
 # 1. Register the Legacy Driver with the OpenCL Loader
 # The loader scans /etc/OpenCL/vendors/*.icd. 
 # We point it to our renamed legacy library.
-RUN echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd
+RUN mkdir -p /etc/OpenCL/vendors && \
+    echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd
 
 # 2. Setup Environment Variables
 # We must add the legacy folder to LD_LIBRARY_PATH so the legacy driver can find its specific GMM library.
