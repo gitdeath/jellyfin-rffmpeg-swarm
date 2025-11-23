@@ -147,14 +147,13 @@ RUN chmod +x /rffmpeg-hostscale.sh /entrypoint.sh /recording-post-processing.sh 
 WORKDIR /tmp/neo
 
 # Install Current Drivers (Gen12+)
-# Note: We install curl temporarily because wget was removed in Phase 3
+# We use 24.35.30872.22 because newer versions (25.x) require libc6 >= 2.38, which is not available in Debian Bookworm.
 RUN apt-get update && apt-get install -y curl && \
-    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-core-2_2.22.2+20121_amd64.deb && \
-    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v2.22.2/intel-igc-opencl-2_2.22.2+20121_amd64.deb && \
-    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-ocloc_25.44.36015.5-0_amd64.deb && \
-    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/intel-opencl-icd_25.44.36015.5-0_amd64.deb && \
-    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libigdgmm12_22.8.2_amd64.deb && \
-    curl -L -O https://github.com/intel/compute-runtime/releases/download/25.44.36015.5/libze-intel-gpu1_25.44.36015.5-0_amd64.deb && \
+    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v1.0.177/intel-igc-core_1.0.177_amd64.deb && \
+    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/v1.0.177/intel-igc-opencl_1.0.177_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-level-zero-gpu_1.3.30872.22_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb && \
     dpkg -i *.deb || apt-get install -f -y && \
     rm *.deb
 
