@@ -9,6 +9,21 @@ log() {
 }
 log "Starting rffmpeg-worker container..."
 
+# Function to handle cleanup on exit
+cleanup() {
+  log "Received stop signal. Cleaning up..."
+  if [ -n "$SSHD_PID" ]; then
+    kill -TERM "$SSHD_PID" 2>/dev/null
+  fi
+  if [ -n "$UPDATE_PID" ]; then
+    kill -TERM "$UPDATE_PID" 2>/dev/null
+  fi
+  exit 0
+}
+
+trap cleanup SIGTERM SIGINT
+
+
 # Function to log a critical error and exit
 bail() {
   log "CRITICAL: $1"
@@ -37,6 +52,16 @@ if [ -e /dev/dri/renderD128 ]; then
 else
     log "Warning: /dev/dri/renderD128 not found. Skipping GPU group setup."
 fi
+
+# --- OpenCL Verification ---
+export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"
+log "Checking OpenCL Status..."
+if command -v clinfo > /dev/null; then
+    clinfo | grep "Platform Name" || echo "No OpenCL platforms found."
+else
+    log "Warning: clinfo not found."
+fi
+log "OpenCL Check Complete."
 
 # Determine the NFS server hostname based on the worker's own hostname.
 # If the worker's hostname contains "-dev", it will connect to the dev server.
@@ -75,6 +100,7 @@ log "INFO: File systems mounted successfully."
     fi
   done
 ) &
+UPDATE_PID=$!
 
 log "Starting SSHD..."
 # Create the directory for sshd privilege separation
@@ -83,6 +109,7 @@ chmod 700 /run/sshd
 # Start the sshd service in the background.
 # The -e flag sends logs to stderr, which is useful for container logging.
 /usr/sbin/sshd -D -e & 
+SSHD_PID=$!
 sleep 1 # Give sshd a moment to start
 # Check if sshd started successfully
 if ! pgrep sshd > /dev/null; then
@@ -110,5 +137,6 @@ while true; do
       bail "NFS is unresponsive. Terminating container."
     fi
   fi
-  sleep $SLEEP_INTERVAL
+  sleep $SLEEP_INTERVAL &
+  wait $!
 done

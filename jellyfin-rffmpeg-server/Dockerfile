@@ -9,35 +9,64 @@ ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 ENV TMPDIR=/cache/temp 
 
+# ==============================================================================
+# OpenCL Support (Current & Legacy)
+# ==============================================================================
+
+# 1. Install Prerequisites
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg2 \
+    clinfo \
+    binutils \
+    libnuma1 \
+    ocl-icd-libopencl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+
+# ==============================================================================
+# PHASE 3: Configuration & Binding
+# ==============================================================================
+
+# 1. Register the Legacy Driver with the OpenCL Loader
+# The loader scans /etc/OpenCL/vendors/*.icd. 
+# We point it to our renamed legacy library.
+RUN mkdir -p /etc/OpenCL/vendors && \
+    echo "/opt/intel/legacy-opencl/libigdrcl_legacy.so" > /etc/OpenCL/vendors/intel_legacy.icd
+
+# 2. Setup Environment Variables
+# We must add the legacy folder to LD_LIBRARY_PATH so the legacy driver can find its specific GMM library.
+ENV LD_LIBRARY_PATH="/opt/intel/legacy-opencl" 
+
 # Installs all system packages, configures rffmpeg, and sets up DVR tools in a single layer.
 # This approach is used to minimize the final image size.
 RUN apt-get -y update --fix-missing && \
     apt-get install -y --no-install-recommends \
-        openssh-client \
-        cron \
-        python3-click \
-        python3-yaml \
-        wget \
-        git \
-        # Comskip build dependencies
-        build-essential \
-        pkg-config \
-        autoconf \
-        automake \
-        libtool \
-        libavformat-dev \
-        libargtable2-dev \
-        libavutil-dev \
-        libavcodec-dev \
-        libswscale-dev \
-        nfs-common \
-        nfs-kernel-server \
-        libcap2-bin \
-        kmod \
-        procps \
-        netbase \
-        iputils-ping \
-        locales \
+    openssh-client \
+    cron \
+    python3-click \
+    python3-yaml \
+    wget \
+    git \
+    # Comskip build dependencies
+    build-essential \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    libavformat-dev \
+    libargtable2-dev \
+    libavutil-dev \
+    libavcodec-dev \
+    libswscale-dev \
+    nfs-common \
+    nfs-kernel-server \
+    libcap2-bin \
+    kmod \
+    procps \
+    netbase \
+    iputils-ping \
+    locales \
     && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen && \
     # Download the rffmpeg configuration template and customize it for this project's paths and user.
@@ -70,7 +99,7 @@ RUN apt-get -y update --fix-missing && \
     make install && \
     cd / && \
     printf "edl_out=1\noutput_edl=1\noutput_to_stdout=1\nverbose=10\n"  > /etc/comskip.ini && \
-# Removes build-time dependencies (like git) and clears apt caches to reduce image size.
+    # Removes build-time dependencies (like git) and clears apt caches to reduce image size.
     rm -rf /tmp/comchap_src /tmp/comskip_src && \
     apt-get purge -y --auto-remove wget git build-essential pkg-config autoconf automake && \
     apt-get autoremove -y --purge && \
@@ -100,11 +129,11 @@ RUN \
     chmod 700 /home/transcodessh/.ssh /rffmpeg/.ssh && \
     chgrp users /transcodes /cache /cache/temp /config /livetv && \
     sed -i \
-        -e 's;#   IdentityFile ~/.ssh/id_rsa;   IdentityFile /run/rffmpeg/.ssh/id_rsa;' \
-        -e 's;#   UserKnownHostsFile ~/.ssh/known_hosts.d/%k;   UserKnownHostsFile /dev/null ;' \
-        -e 's;#   StrictHostKeyChecking ask;    StrictHostKeyChecking no;' \
-        /etc/ssh/ssh_config
-    
+    -e 's;#   IdentityFile ~/.ssh/id_rsa;   IdentityFile /run/rffmpeg/.ssh/id_rsa;' \
+    -e 's;#   UserKnownHostsFile ~/.ssh/known_hosts.d/%k;   UserKnownHostsFile /dev/null ;' \
+    -e 's;#   StrictHostKeyChecking ask;    StrictHostKeyChecking no;' \
+    /etc/ssh/ssh_config
+
 # Copies the container's operational scripts and sets up a cron job.
 # The cron job periodically runs the host scaling script to discover and manage worker nodes.
 COPY --chown=transcodessh:users rffmpeg-hostscale.sh /rffmpeg-hostscale.sh
@@ -112,5 +141,36 @@ COPY --chown=root:root entrypoint.sh /entrypoint.sh
 COPY --chown=root:root recording-post-proceessing.sh /recording-post-processing.sh
 RUN chmod +x /rffmpeg-hostscale.sh /entrypoint.sh /recording-post-processing.sh && \
     (crontab -l 2>/dev/null; echo "*/15 * * * * /rffmpeg-hostscale.sh"; echo "0 0 * * * /usr/local/bin/rffmpeg clear") | crontab -
+
+# ==============================================================================
+# PHASE 4: Install Drivers (Moved to end to avoid autoremove)
+# ==============================================================================
+WORKDIR /tmp/neo
+
+# Install Current Drivers (Gen12+)
+# We use 24.35.30872.22 because newer versions (25.x) require libc6 >= 2.38, which is not available in Debian Bookworm.
+RUN apt-get update && apt-get install -y curl && \
+    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17537.20/intel-igc-core_1.0.17537.20_amd64.deb && \
+    curl -L -O https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17537.20/intel-igc-opencl_1.0.17537.20_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-level-zero-gpu_1.3.30872.22_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd_24.35.30872.22_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb && \
+    apt-get install -y --allow-downgrades ./*.deb && \
+    apt-mark manual intel-igc-core intel-igc-opencl intel-level-zero-gpu intel-opencl-icd libigdgmm12 && \
+    rm *.deb
+
+# Install Legacy Drivers (Gen8-11)
+WORKDIR /tmp/legacy_neo
+RUN curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb && \
+    curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.30872.22/libigdgmm12_22.5.0_amd64.deb && \
+    mkdir -p extracted_icd && dpkg -x intel-opencl-icd-legacy1_24.35.30872.22_amd64.deb extracted_icd && \
+    mkdir -p extracted_gmm && dpkg -x libigdgmm12_22.5.0_amd64.deb extracted_gmm && \
+    mkdir -p /opt/intel/legacy-opencl && \
+    cp $(find extracted_icd -name "libigdrcl*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
+    cp $(find extracted_gmm -name "libigdgmm*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdgmm.so.12 && \
+    rm -rf /tmp/legacy_neo /tmp/neo && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -453,6 +453,16 @@ main() {
   log_header 'nfs server startup complete'
 }
 
+# --- OpenCL Verification ---
+export LD_LIBRARY_PATH="/opt/intel/legacy-opencl:$LD_LIBRARY_PATH"
+log_header 'Checking OpenCL Status'
+if command -v clinfo > /dev/null; then
+    clinfo | grep "Platform Name" || echo "No OpenCL platforms found."
+else
+    log_warning "clinfo not found."
+fi
+log_header 'OpenCL Check Complete'
+
 main
 
 # --- Jellyfin Logic ---
