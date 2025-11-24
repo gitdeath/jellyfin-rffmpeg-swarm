@@ -169,7 +169,6 @@ RUN curl -L -O https://github.com/intel/compute-runtime/releases/download/24.35.
     cp $(find extracted_icd -name "libigdrcl*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdrcl_legacy.so && \
     cp $(find extracted_gmm -name "libigdgmm*.so*" | head -n 1) /opt/intel/legacy-opencl/libigdgmm.so.12 && \
     rm -rf /tmp/legacy_neo /tmp/neo && \
-    apt-get purge -y curl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
