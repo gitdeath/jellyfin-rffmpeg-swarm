@@ -122,6 +122,15 @@ FAIL_COUNT=0
 MAX_FAILS=3
 SLEEP_INTERVAL=5
 
+# Check if GPU is expected
+if [ -e /dev/dri/renderD128 ]; then
+    HAS_GPU=true
+else
+    HAS_GPU=false
+    log "INFO: No GPU device found. Skipping GPU health checks."
+fi
+GPU_FAIL_COUNT=0
+
 while true; do
   if ! pgrep -x "sshd" >/dev/null; then
     bail "SSHD process is not running. Terminating container."
@@ -137,6 +146,23 @@ while true; do
       bail "NFS is unresponsive. Terminating container."
     fi
   fi
+
+  # GPU Health Check
+  if [ "$HAS_GPU" = true ]; then
+      if head -c 0 /dev/dri/renderD128 >/dev/null 2>&1; then
+          if [ $GPU_FAIL_COUNT -gt 0 ]; then
+              log "INFO: GPU access recovered."
+          fi
+          GPU_FAIL_COUNT=0
+      else
+          ((GPU_FAIL_COUNT++))
+          log "WARNING: GPU access check failed. Consecutive failures: $GPU_FAIL_COUNT/$MAX_FAILS"
+          if [ $GPU_FAIL_COUNT -ge $MAX_FAILS ]; then
+              bail "GPU device is unresponsive or permission denied. Terminating container."
+          fi
+      fi
+  fi
+
   sleep $SLEEP_INTERVAL &
   wait $!
 done
