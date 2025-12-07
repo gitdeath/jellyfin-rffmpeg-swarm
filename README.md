@@ -46,6 +46,7 @@ If you prefer to configure the host manually or need to troubleshoot specific st
     docker run -d --restart always --name device-manager --privileged \
       --cgroupns=host --pid=host --userns=host \
       -v /sys:/host/sys -v /var/run/docker.sock:/var/run/docker.sock \
+      -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket \
       ghcr.io/gitdeath/device-mapping-manager:master
     ```
 
