@@ -28,7 +28,7 @@ We provide a script that handles all dependencies, kernel modules, OpenCL driver
 
 1.  **Download and Run**:
     ```bash
-    wget https://raw.githubusercontent.com/gitdeath/jellyfin-rffmpeg-swarm/main/setup-node.sh
+    wget https://raw.githubusercontent.com/mels0n/jellyfin-rffmpeg-swarm/main/setup-node.sh
     chmod +x setup-node.sh
     sudo ./setup-node.sh
     ```
@@ -47,7 +47,7 @@ If you prefer to configure the host manually or need to troubleshoot specific st
       --cgroupns=host --pid=host --userns=host \
       -v /sys:/host/sys -v /var/run/docker.sock:/var/run/docker.sock \
       -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket \
-      ghcr.io/gitdeath/device-mapping-manager:master
+      ghcr.io/mels0n/device-mapping-manager:master
     ```
 
 ## Production Deployment
@@ -58,7 +58,7 @@ Follow these steps on your Docker Swarm manager node.
 Create a directory for your stack and download the compose file.
 ```bash
 mkdir -p ~/jellyfin-swarm && cd ~/jellyfin-swarm
-wget https://raw.githubusercontent.com/gitdeath/jellyfin-rffmpeg-swarm/main/docker-compose.yml
+wget https://raw.githubusercontent.com/mels0n/jellyfin-rffmpeg-swarm/main/docker-compose.yml
 ```
 
 ### 2. Generate and Store SSH Keys
@@ -108,7 +108,7 @@ This repository includes a `docker-compose.dev.yml` file for deploying this test
 3.  Deploy the stack with a unique name (e.g., `jellyfin-dev`).
 
 ```bash
-wget https://raw.githubusercontent.com/gitdeath/jellyfin-rffmpeg-swarm/main/docker-compose.dev.yml
+wget https://raw.githubusercontent.com/mels0n/jellyfin-rffmpeg-swarm/main/docker-compose.dev.yml
 docker stack deploy -c docker-compose.dev.yml jellyfin-dev
 ```
 

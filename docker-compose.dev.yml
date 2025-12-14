@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # The main Jellyfin server, which also acts as the rffmpeg orchestrator and NFS server
   jellyfin-server:
-    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-server:dev
+    image: ghcr.io/mels0n/jellyfin-rffmpeg-swarm-server:dev
     hostname: jellyfin-server-dev
     cap_add:
       - SYS_ADMIN
@@ -41,7 +41,7 @@ services:
 
   # The rffmpeg transcode worker, scalable
   transcode-worker:
-    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-worker:dev
+    image: ghcr.io/mels0n/jellyfin-rffmpeg-swarm-worker:dev
     hostname: "jellyfin-transcode-dev-{{.Task.Slot}}"
     # security_opt:
     #   - apparmor:unconfined

@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # The main Jellyfin server, which also acts as the rffmpeg orchestrator and NFS server
   jellyfin-server:
-    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-server:latest
+    image: ghcr.io/mels0n/jellyfin-rffmpeg-swarm-server:latest
     hostname: jellyfin-server
     cap_add:
       - SYS_ADMIN
@@ -41,7 +41,7 @@ services:
 
   # The rffmpeg transcode worker, scalable
   transcode-worker:
-    image: ghcr.io/gitdeath/jellyfin-rffmpeg-swarm-worker:latest
+    image: ghcr.io/mels0n/jellyfin-rffmpeg-swarm-worker:latest
     hostname: "jellyfin-transcode-{{.Task.Slot}}"
     # security_opt:
     #   - apparmor:unconfined
@@ -93,7 +93,6 @@ volumes:
       type: "nfs"
       o: "addr=YOUR_NFS_SERVER_IP,nolock,soft,rw"
       device: ":/path/to/your/livetv/recordings"
-
 
 # This section defines Docker secrets for securely managing the SSH keys.
 secrets:
