@@ -83,24 +83,7 @@ if ! mount -a; then
 fi
 log "INFO: File systems mounted successfully."
 
-# Background process: Attempt to update jellyfin-ffmpeg7 every 25 hours
-(
-  set -e
-  while true; do
-    sleep 90000 # Sleep for 25 hours (25 * 3600 seconds)
-    if ! pgrep -x "ffmpeg" >/dev/null; then
-      log "Checking for jellyfin-ffmpeg7 updates..."
-      if apt-get update >/dev/null 2>&1 && apt list --upgradable 2>/dev/null | grep -q "^jellyfin-ffmpeg7/"; then
-        log "New version of jellyfin-ffmpeg7 found. Updating..."
-        apt-get install --only-upgrade -y jellyfin-ffmpeg7 >/dev/null 2>&1
-        log "jellyfin-ffmpeg7 update completed."
-      fi
-    else
-      log "ffmpeg process is running. Skipping update check."
-    fi
-  done
-) &
-UPDATE_PID=$!
+
 
 log "Starting SSHD..."
 # Create the directory for sshd privilege separation
