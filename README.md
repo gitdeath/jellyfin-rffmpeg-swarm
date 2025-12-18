@@ -6,7 +6,7 @@ This project creates a scalable, distributed Jellyfin media server using Docker 
 
 Imagine you record every soccer game your son plays. Now imagine their grandparents can't make every game. Now imagine everyone on the team (and their grandparents) wants to be able to watch those recordings.
 
-You will realize the number of transcoded streams you may need is more than one mini-pc will handle.
+You will realize the number of transcoded streams you may need is more than one mini-pc will handle - but the good news is you already have multiple mini-pcs.
 
 ## Overview
 
