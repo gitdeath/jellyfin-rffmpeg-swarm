@@ -2,6 +2,12 @@
 
 This project creates a scalable, distributed Jellyfin media server using Docker Swarm. It solves the common challenge of CPU-intensive video transcoding by offloading the work from the main Jellyfin server to a cluster of dedicated worker nodes.
 
+## Why I built this
+
+Imagine you record every soccer game your son plays. Now imagine their grandparents can't make every game. Now imagine everyone on the team (and their grandparents) wants to be able to watch those recordings.
+
+You will realize the number of transcoded streams you may need is more than one mini-pc will handle.
+
 ## Overview
 
 The architecture is composed of two primary services that communicate over a secure Docker overlay network:
