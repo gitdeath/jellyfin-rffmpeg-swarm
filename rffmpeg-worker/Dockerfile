@@ -37,7 +37,6 @@ RUN apt-get update && apt-get install -y \
     ocl-icd-libopencl1 \
     && rm -rf /var/lib/apt/lists/*
 
-
 # ==============================================================================
 # PHASE 3: Configuration & Binding
 # ==============================================================================
