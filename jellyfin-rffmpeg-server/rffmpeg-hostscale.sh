@@ -74,7 +74,6 @@ while true; do
             break
         fi
     fi
-
     # Increment counter for the next hostname
     ((i++))
 done
