@@ -23,7 +23,6 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
-
 # Function to log a critical error and exit
 bail() {
   log "CRITICAL: $1"
